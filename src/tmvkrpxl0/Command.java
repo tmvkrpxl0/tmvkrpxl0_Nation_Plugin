@@ -2,7 +2,7 @@ package tmvkrpxl0;
 
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import net.md_5.bungee.api.ChatColor;
 
@@ -16,7 +16,9 @@ public class Command implements CommandExecutor{
 			"강등 - 다른 사람을 국가에서 강등시켜줍니다", 
 			"전쟁선포 - " + ChatColor.RED +" 다른 국가와의 전쟁을 선포합니다", 
 			"전쟁항복 - 다른 국가와의 전쟁에서 항복합니다(준비시간에만 가능)", 
-			"저장 - 국가 구성원 정보를 저장합니다."};
+			"저장 - 국가 구성원 정보를 저장합니다.",
+			"test "};
+			//중요: 명령어를 추가할 때, 설명은 적지 않더라도 공백은 뒤에 쓸것 예시: "xxxx " 처럼 뒤에 공백
 	@Override
 	public boolean onCommand(CommandSender sender, org.bukkit.command.Command cmd, String label, String[] args) {
 		boolean right = false;
@@ -27,14 +29,14 @@ public class Command implements CommandExecutor{
 					break;
 				}
 			}
-			if(!right)printUsage((Player)sender);
+			if(!right)printUsage(sender);
 			switch(args[0]) {
 			case "생성":
 				if(sender.hasPermission("kukga.create")) {
-					if(Core.teammanager.isInNation(sender.getName()))
+					if(TeamManager.getNation(sender.getName())!=null)
 						sender.sendMessage(ChatColor.RED + "이미 국가에 소속되어 있습니다!");else {
 						if(args.length < 2)sender.sendMessage("사용법: /국가 생성 <국가 이름>");
-						else Core.teammanager.createTeam(args[1], sender.getName());
+						else TeamManager.createTeam(args[1], sender.getName());
 					}
 				}else {
 					sender.sendMessage("오직 개척자만이 사용 가능합니다!");
@@ -42,14 +44,14 @@ public class Command implements CommandExecutor{
 				break;
 			}
 		}else {
-			printUsage((Player) sender);
+			printUsage(sender);
 		}
 		return right;
 	}
 	
-	private void printUsage(Player sender) {
+	private void printUsage(CommandSender sender) {
 			for(String s : available) {
-				sender.sendMessage(ChatColor.GOLD + "" +  ChatColor.BOLD + "/국가 " + s);
+				sender.sendMessage(Core.prefix +  ChatColor.BOLD + "/국가 " + s);
 			}
 	}
 }
