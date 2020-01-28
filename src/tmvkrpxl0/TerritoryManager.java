@@ -2,51 +2,43 @@ package tmvkrpxl0;
 
 import java.util.LinkedHashMap;
 import org.bukkit.Location;
-import org.bukkit.World;
 
 class TerritoryManager {
-    private static LinkedHashMap<String, Location> beacons; //국가별 신호기 위치 저장
-    private static final World overworld = Core.plugin.getServer().getWorlds().get(0);
-    private static final int minDistance = 120;
+    private static LinkedHashMap<String, int[][]> locations; //국가별 신호기 위치 저장
+    //인덱스 순서는 Z 생겨먹은거 5번째 원소는 신호기 위치 나머지 4개는 모서리
+    //5개 전부 0번은 x 1번은 y
     @SuppressWarnings("unchecked")
     protected TerritoryManager(){
-        LinkedHashMap<String, double[]> temp = (LinkedHashMap<String, double[]>) Core.loadfile("plugins/Kukga/beacons.yml");
-        if(temp==null){
-            beacons = new LinkedHashMap<String, Location>();
-        }else{
-            double [] l;
-            for(String s : temp.keySet()){
-                l = temp.get(s);
-                beacons.put(s, new Location(overworld, l[0], l[1], l[2]));
-            }
-        }
+        locations = (LinkedHashMap<String, int[][]>) Core.loadfile("plugins/Kukga/locations.yml");
+        if(locations==null)locations = new LinkedHashMap<String, int[][]>();
     }
 
     protected static boolean registerRegion(String nation, Location loc){
-        for(String s : beacons.keySet()){
-            if(loc.distance(beacons.get(s)) <= minDistance)return false;
-        }
-        beacons.put(nation, loc);
+    	if(isInRegion(loc)!=null || isInRegion(loc.add(-24, 0, 25))!=null || isInRegion(loc.add(25, 0, 25))!=null ||
+    			isInRegion(loc.add(-24, 0, -24))!=null || isInRegion(loc.add(25, 0, -24))!=null)return false;
+    	locations.put(nation, new int [][] {new int[]{loc.getBlockX()-24, loc.getBlockY()+25},new int[]{loc.getBlockX()+25, loc.getBlockY()+25},
+    					new int[]{loc.getBlockX()-24, loc.getBlockY()-24},new int[]{loc.getBlockX()+24, loc.getBlockY()-24},
+    						new int[]{loc.getBlockX(), loc.getBlockY()},});
         return true;
     }
 
     protected static void save() {
-        LinkedHashMap<String, double[]> temp = new LinkedHashMap<String, double[]>();
-        Location t;
-        for(String s : beacons.keySet()){
-            t = beacons.get(s);
-            temp.put(s, new double[]{t.getX(), t.getY(), t.getZ()});
-        }
-        Core.savefile("plugins/Kukga/beacons.yml", temp);
+        Core.savefile("plugins/Kukga/locations.yml", locations);
     }
 
     protected static String isInRegion(Location loc){
-        Location t;
-        for(String s : beacons.keySet()){
-            t = beacons.get(s);
-            if(t.getX()-24 < loc.getX() && loc.getX() < t.getX()+25 &&
-                t.getZ()-24 < loc.getZ() && loc.getZ() < t.getZ()+25)return s;
-        }
-        return null;
+    	for(String s : locations.keySet()) {
+    		for(int [] i : locations.get(s)) {
+    			//Math. sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+    			if(Math.sqrt((i[0])*(loc.getX()) * (i[0])*(loc.getX()) + (i[1])*(loc.getY()) * (i[1])*(loc.getY())) <= 75) {
+    				return s;
+    			}
+    		}
+    	}
+    	return null;
+    }
+    
+    protected static void deleteRegion(String nation) {
+    	locations.remove(nation);
     }
 }

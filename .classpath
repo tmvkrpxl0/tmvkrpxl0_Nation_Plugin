@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="D:/페이퍼_프리루트_1.7.10_서버구동기/Paper.jar"/>
+	<classpathentry kind="lib" path="D:/페이퍼_프리루트_1.7.10_서버구동기/plugins/Essentials.jar"/>
+	<classpathentry kind="lib" path="D:/페이퍼_프리루트_1.7.10_서버구동기/plugins/ProtocolLib.jar"/>
+	<classpathentry kind="lib" path="C:/Users/tmvkr/Downloads/lombok.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

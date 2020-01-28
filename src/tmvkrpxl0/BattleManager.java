@@ -1,7 +1,6 @@
 package tmvkrpxl0;
 
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -62,6 +61,7 @@ class BattleManager {
         return "" + (seconds/60) + "분 " + (seconds%60) + "초";
     }
     protected static String warWithWho(String nation){
+    	if(battleState.keySet() == null)Core.broadcast("asdf");
         for(String [] s : battleState.keySet()){
             return (s[0].equals(nation))?s[1]:s[0];
         }
@@ -108,4 +108,10 @@ class BattleManager {
                 }
         }.runTaskTimer(Core.plugin, 0, 20);
     }
+    
+    protected static void surrender(String nation) {
+    	
+    }
+    
+    
 }
