@@ -50,7 +50,7 @@ class TerritoryManager {
     		public void run() {
     			for(String s : locations.keySet()) {
     				for(ArrayList<Object> lo : locations.get(s)) {
-    					int [] tia = Arrays.stream(((ArrayList<Integer>) lo.get(0)).toArray(new Integer[((ArrayList<Integer>) lo.get(0)).size()])).mapToInt(Integer::intValue).toArray();
+    					int [] tia = Arrays.stream((Integer[])lo.get(0)).mapToInt(Integer::intValue).toArray();
     					LightChanger.createLightSource(new Location(Bukkit.getWorlds().get(0),
     							tia[0], tia[1], tia[2]), light);
     					if(down)light--;
@@ -63,17 +63,17 @@ class TerritoryManager {
     	}.runTaskTimer(Core.plugin, 0, 2);
     }
 
-	@SuppressWarnings("unchecked")
 	protected static String registerRegion(String nation, Location yloc, String name){
 		int [] loc = new int[] {yloc.getBlockX(), yloc.getBlockZ()};
+		int [][] ita = getEdges(loc);
     	for(String s: locations.keySet()) {
     		for(ArrayList<Object> lo : locations.get(s)) {
-    			int [] temp = new int[] {((ArrayList<Integer>)lo.get(0)).get(0), ((ArrayList<Integer>)lo.get(0)).get(2)};
+    			int [] temp = new int[] {((Integer[])lo.get(0))[0], ((Integer[])lo.get(0))[2]};
     			if(getDistance(temp, loc)<=(s.equals(nation)?minDistanceFriendly:minDistance))return s;//신호기들끼리 거리계산
-    			for(ArrayList<Integer> edg: ((ArrayList<ArrayList<Integer>>)lo.get(1))) {
-    				if(getDistance(Arrays.stream(edg.toArray(new Integer[edg.size()])).mapToInt(Integer::intValue).toArray(), loc)<=(s.equals(nation)?minDistanceFriendly:minDistance))return s;//신호기와 모서리 거리 계산
+    			for(Integer[] edg: ((Integer[][])lo.get(1))) {
+    				if(getDistance(Arrays.stream(edg).mapToInt(Integer::intValue).toArray(), loc)<=(s.equals(nation)?minDistanceFriendly:minDistance))return s;//신호기와 모서리 거리 계산
     			}
-    			for(int [] li : getEdges(loc)) {
+    			for(int [] li : ita) {
     				if(getDistance(li, temp)<=(s.equals(nation)?minDistanceFriendly:minDistance))return s;//모서리와 신호기 거리계산
     				for(int[] ned: ((int[][])lo.get(1))) {
     					if(getDistance(li, ned)<=(s.equals(nation)?minDistanceFriendly:minDistance))return s;//모서리들끼리 거리계산
@@ -84,16 +84,15 @@ class TerritoryManager {
     	LinkedList<ArrayList<Object>> llo;
     	if(!locations.containsKey(nation))llo = new LinkedList<ArrayList<Object>>();
     	else llo = locations.get(nation);
-    	LinkedList<Object> lo = new LinkedList<Object>();
-    	LinkedList<Integer> ltemp = new LinkedList<Integer>(Arrays.asList(Arrays.stream(loc).boxed().toArray(Integer[]::new)));//아 것참 int[] 이거 리스트로 만들어서 저장하는거 왜이렇게 복잡해
-    	ltemp.add(loc[1]);
-    	ltemp.set(1, yloc.getBlockY());
-    	lo.add(ltemp);
-    	LinkedList<LinkedList<Integer>> tedge = new LinkedList<LinkedList<Integer>>();
-    	for(int[] i1array : getEdges(loc)) {
-    		tedge.add(new LinkedList<Integer>(Arrays.asList(Arrays.stream(i1array).boxed().toArray(Integer[]::new))));
+    	ArrayList<Object> lo = new ArrayList<Object>(3);
+    	lo.add(new Integer[] {yloc.getBlockX(), yloc.getBlockY(), yloc.getBlockZ()});
+    	Integer [][] Ita = new Integer[4][2];
+    	for(int i=0;i<4;i++) {
+    		for(int j=0;j<2;j++) {
+    			Ita[i][j] = ita[i][j];
+    		}
     	}
-		lo.add(tedge);
+    	lo.add(Ita);
 		lo.add(name);
 		llo.add(new ArrayList<Object>(lo));
 		locations.put(nation, llo);
@@ -116,16 +115,14 @@ class TerritoryManager {
     		new int[] {centor[0]+25, centor[1]-24}};
     }
     
-    @SuppressWarnings("unchecked")
 	protected static String isInRegion(Location loc){
     	int [] li = new int[] {loc.getBlockX(), loc.getBlockZ()};
     	for(String s : locations.keySet()) {
     		for(ArrayList<Object> lo : locations.get(s)) {
-    			ArrayList<Integer> tl = new ArrayList<Integer>((ArrayList<Integer>) lo.get(0));
-    			tl.remove(1);
-    			if(getDistance(li, Arrays.stream(tl.toArray(new Integer[] {})).mapToInt(Integer::intValue).toArray())<=minDistance)return s;
-    			for(ArrayList<Integer> edges: (ArrayList<ArrayList<Integer>>)lo.get(1)) {
-    				if(getDistance(li, Arrays.stream(edges.toArray(new Integer[edges.size()])).mapToInt(Integer::intValue).toArray())<=minDistance)return s;
+    			int [] tl = new int[] {((Integer[])lo.get(1))[0], ((Integer[])lo.get(1))[1]};
+    			if(getDistance(li, tl)<=minDistance)return s;
+    			for(Integer [] edges: (Integer[][])lo.get(1)) {
+    				if(getDistance(li, Arrays.stream(edges).mapToInt(Integer::intValue).toArray())<=minDistance)return s;
     			}
     		}
     	}
