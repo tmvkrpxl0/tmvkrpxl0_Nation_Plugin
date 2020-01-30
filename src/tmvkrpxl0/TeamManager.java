@@ -1,25 +1,49 @@
 package tmvkrpxl0;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Set;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 public class TeamManager {
-	private static LinkedHashMap<String, ArrayList<String>> team = null;
+	private static LinkedHashMap<String, LinkedList<String>> team;;
 	protected static LinkedHashMap<String, String> invites;
+	private FileConfiguration data;
 	ConsoleCommandSender sender = Core.sender;
 	@SuppressWarnings("unchecked")
 	protected TeamManager(){
 		//여기서 팀 정보를 불러오기도 합니다
-		team = (LinkedHashMap<String, ArrayList<String>>) Core.loadfile("plugins/Kukga/team.yml");
-		if(team == null)team = new LinkedHashMap<String, ArrayList<String>>();
+		data = YamlConfiguration.loadConfiguration(new File(Core.plugin.getDataFolder(), "팀.yml"));
+		team = new LinkedHashMap<String, LinkedList<String>>();
+		if(data.getConfigurationSection("팀")!=null) {
+			Map<String, Object> t = data.getConfigurationSection("팀").getValues(false);
+			for(String s : t.keySet()) {
+				LinkedList<String> ls = new LinkedList<String>();
+				for(String as : (ArrayList<String>)t.get(s)) {
+					ls.add(as);
+				}
+				team.put(s, ls);
+			}
+		}
 		invites = new LinkedHashMap<String, String>();
 	}
 	
-	protected static void save(){
-		Core.savefile("plugins/Kukga/team.yml", team);
+	protected void save(){
+		data.createSection("팀", team);
+		try {
+			data.save(new File(Core.plugin.getDataFolder(), "팀.yml"));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	protected static String getNation(String name) {
@@ -32,14 +56,14 @@ public class TeamManager {
 		return null;
 	}
 	protected static void createTeam(String Teamname, String Playername) {
-		ArrayList<String> temp = new ArrayList<String>();
-		temp.add(Playername);
-		team.put(Teamname, temp);
+		LinkedList<String> ls = new LinkedList<String>();
+		ls.add(Playername);
+		team.put(Teamname, ls);
 	}
 	
 	protected static void deleteTeam(String nation) {
 		team.remove(nation);
-		TerritoryManager.deleteRegion(nation);
+		TerritoryManager.deleteNation(nation);
 	}
 	
 	protected static boolean invite(String playername, String nation) {
@@ -60,17 +84,22 @@ public class TeamManager {
 	}
 	
 	protected static void joinTeam(String playername, String nation) {
-		ArrayList<String> t = team.get(nation);
+		LinkedList<String> t = team.get(nation);
 		t.add(playername);
 		team.put(nation, t);
 	}
 	
-	protected static void leaveTeam(String playername, String nation, boolean force) {
-		ArrayList<String> t = team.get(nation);
+	protected static void leaveTeam(String playername, String nation) {
+		LinkedList<String> t = team.get(nation);
 		t.remove(playername);
-		for(String p : t) {
-			Bukkit.getPlayerExact(p).sendMessage(playername + "님께서 국가" + (force ? "에서 추방당하셨습니다!" : "에서 탈퇴하셨습니다!"));
-		}
 		team.put(nation, t);
+	}
+	
+	protected static LinkedList<String> getTeam(String nation){
+		return team.get(nation);
+	}
+	
+	protected static Set<String> getTeamList(){
+		return team.keySet();
 	}
 }

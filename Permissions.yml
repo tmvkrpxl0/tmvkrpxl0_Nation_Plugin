@@ -1,6 +1,6 @@
 kukga.create:
-   description: 국가를 생성할 때 필요한 권한입니다. 개척자만이 가지고 있을 수 있습니다. 왕의 권한이라고 보아도 무방합니다
+   description: 국가를 생성할 때 필요한 권한입니다. 개척자만이 가지고 있을 수 있습니다. 국가를 생성한 뒤에도 왕 권한과 같이 가지고 있습니다
    default: false
 kukga.secondary:
-   description: 부왕의 권한입니다. 왕의 권한과 비슷하지만, 국가 삭제 및 생성을 할 수 없습니다.
+   description: 왕의 권한입니다.
    default: false
