@@ -1,1 +1,1 @@
-{"==":"org.bukkit.inventory.ItemStack","type":"PAPER","meta":{"==":"ItemMeta","meta-type":"UNSPECIFIC","lore":["§f§l우클릭시 현재 걸린 전쟁을 무효시킬 수 있다고 전해진다."],"display-name":"§f§l국가 방어권"}}
+﻿{"==":"org.bukkit.inventory.ItemStack","type":"PAPER","meta":{"==":"ItemMeta","meta-type":"UNSPECIFIC","lore":["§f§l우클릭시 현재 걸린 전쟁을 무효시킬 수 있다고 전해진다."],"display-name":"§f§l국가 방어권"}}
