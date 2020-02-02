@@ -11,10 +11,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import com.earth2me.essentials.api.Economy;
-import com.earth2me.essentials.api.NoLoanPermittedException;
-import com.earth2me.essentials.api.UserDoesNotExistException;
-
 import net.md_5.bungee.api.ChatColor;
 
 class BattleManager {
@@ -30,12 +26,12 @@ class BattleManager {
     	Map<String, Object> temp = data.getConfigurationSection("전쟁상태").getValues(false);
     		for(String s : temp.keySet())battleState.put(s, (int[])temp.get(s));
     	}
-    	ctime = Core.plugin.getConfig().getInt("전쟁.준비시간(초)");
-    	wtime = Core.plugin.getConfig().getInt("전쟁.전쟁시간(초)");
+    	ctime = Core.plugin.getConfig().getInt("war.preparing time");
+    	wtime = Core.plugin.getConfig().getInt("war.battle time");
     	
         if(!battleState.isEmpty()) {
-            int de = Core.plugin.getConfig().getInt("전쟁.서버 재시작시 대기시간");
-            int rt = Core.plugin.getConfig().getInt("전쟁.서버 재시작시 준비시간");
+            int de = Core.plugin.getConfig().getInt("war.delay message time after server restart");
+            int rt = Core.plugin.getConfig().getInt("war.re-preparing time after server restart");
             new BukkitRunnable(){
             @Override
             public void run(){
@@ -78,7 +74,6 @@ class BattleManager {
         return "" + (seconds/60) + "분 " + (seconds%60) + "초";
     }
     protected static String[] warWithWho(String nation){
-    	if(battleState.keySet() == null)Core.broadcast("asdf");
     	String [] sa;
         for(String s : battleState.keySet()){
         	sa = s.split("vs");
@@ -92,7 +87,6 @@ class BattleManager {
     	try {
 			data.save(new File(Core.plugin.getDataFolder(), "전쟁상황.yml"));
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
     }
@@ -135,26 +129,7 @@ class BattleManager {
         }.runTaskTimer(Core.plugin, 0, 20);
     }
     
-    @SuppressWarnings("deprecation")
-	protected static void surrender(String victim, String to) {
-    	try {
-    			double moneytotal = 0;
-    			for(String pn : TeamManager.getTeam(victim)) {
-    				moneytotal+=Economy.getMoney(pn)*0.2;
-    				Economy.setMoney(pn, Economy.getMoney(victim)*0.8);
-    			}
-    			Economy.setMoney(TeamManager.getTeam(to).get(0), Economy.getMoney(TeamManager.getTeam(to).get(0)) + moneytotal);
-    			Bukkit.getServer().getPlayerExact(TeamManager.getTeam(to).get(0)).sendMessage("현제 항복시스템은 제대로 구현되어 있지 않습니다");
-    			Bukkit.getServer().getPlayerExact(TeamManager.getTeam(to).get(0)).sendMessage("국가 잔고에서 50%차감하는 부분은 없으며, 진 플레이어들의 돈을");
-    			Bukkit.getServer().getPlayerExact(TeamManager.getTeam(to).get(0)).sendMessage("상대 국가 잔고에 넣는 부분도 없습니다. 그러니 국왕님께 그 돈을 전송하도록 하겠습니다");
-    			battleState.remove(victim + "vs" + to);
-			} catch (NoLoanPermittedException | UserDoesNotExistException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    	}
-    
     protected static void remove(String nation) {
-    	
+    	battleState.remove(warWithWho(nation)[0] + "vs" + warWithWho(nation)[1]);
     }
 }

@@ -1,7 +1,6 @@
 package tmvkrpxl0;
 
 import java.lang.reflect.Field;
-import java.util.LinkedHashMap;
 
 import org.bukkit.entity.Player;
 
@@ -17,14 +16,12 @@ public class PacketInjector {
 	  private Field EntityPlayer_playerConnection;
 	  private Class<?> PlayerConnection;
 	  private Field PlayerConnection_networkManager;
-	  protected static LinkedHashMap<Player, PacketHandler> handlers;
 
 	  private Class<?> NetworkManager;
 	  private Field k;
 	  private Field m;
 
 	  public PacketInjector() {
-		  handlers = new LinkedHashMap<Player, PacketHandler>();
 	  try {
 	  EntityPlayer_playerConnection = Reflection.getField(Reflection.getClass("{nms}.EntityPlayer"), "playerConnection");
 
@@ -43,8 +40,7 @@ public class PacketInjector {
 	  try {
 	  Channel ch = getChannel(getNetworkManager(Reflection.getNmsPlayer(p)));
 	  if(ch.pipeline().get("PacketInjector") == null) {
-		  handlers.put(p, new PacketHandler(p));
-	  PacketHandler h = handlers.get(p);
+	  PacketHandler h = new PacketHandler(p);
 	  ch.pipeline().addBefore("packet_handler", "PacketInjector", h);
 	  }
 	  } catch (Throwable t) {

@@ -1,0 +1,10 @@
+war:
+   preparing time: 300 #초
+   battle time: 600 #초
+   delay message time after server restart: 60 #전쟁 상황 복구 메세지 지연시간
+   re-preparing time after server restart: 120 #전쟁 상황 복구 이후 준비시간
+   
+Territory:
+   minDistance: 128 #최소거리
+   minDistanceFriendly: 64; #아군 최소거리
+   

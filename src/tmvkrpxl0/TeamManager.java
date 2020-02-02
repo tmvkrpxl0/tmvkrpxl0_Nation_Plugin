@@ -41,7 +41,6 @@ public class TeamManager {
 		try {
 			data.save(new File(Core.plugin.getDataFolder(), "팀.yml"));
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -59,9 +58,10 @@ public class TeamManager {
 		LinkedList<String> ls = new LinkedList<String>();
 		ls.add(Playername);
 		team.put(Teamname, ls);
+		TerritoryManager.addNation(Teamname);
 	}
 	
-	protected static void deleteTeam(String nation) {
+	protected static void deleteTeam(String nation){
 		team.remove(nation);
 		TerritoryManager.deleteNation(nation);
 	}
@@ -83,13 +83,13 @@ public class TeamManager {
 		return true;
 	}
 	
-	protected static void joinTeam(String playername, String nation) {
+	protected static void joinTeam(String playername, String nation){
 		LinkedList<String> t = team.get(nation);
 		t.add(playername);
 		team.put(nation, t);
 	}
 	
-	protected static void leaveTeam(String playername, String nation) {
+	protected static void leaveTeam(String playername, String nation){
 		LinkedList<String> t = team.get(nation);
 		t.remove(playername);
 		team.put(nation, t);

@@ -1,9 +1,17 @@
 package tmvkrpxl0;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
 
 import org.bukkit.Bukkit;
@@ -15,6 +23,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
@@ -32,7 +41,10 @@ public class Core extends JavaPlugin {
 	protected static Scoreboard sb;
 	protected static Objective obj;
 	protected static PacketInjector injector;
-
+	protected static ItemStack declarepaper;
+	protected static ItemStack defendpaper;
+	protected static LinkedHashSet<CustomThread> threads;
+	
 	@Override
 	public void onEnable() {
 		prefix = ChatColor.GOLD + "[" + ChatColor.WHITE + "국가" + ChatColor.GOLD + "]" + ChatColor.RESET;//[국가]
@@ -53,9 +65,24 @@ public class Core extends JavaPlugin {
 		sender.sendMessage("####################################");
 		getCommand("국가").setExecutor(new Command());
 		injector = new PacketInjector();
+		declarepaper = loadItem("전쟁선포권.json");
+		defendpaper = loadItem("국가방어권.json");
+		threads = new LinkedHashSet<CustomThread>();
+		new BukkitRunnable() {
+			public void run() {
+				Iterator<CustomThread> itr = threads.iterator();
+				while(itr.hasNext()) {
+					if(!itr.next().isAlive())itr.remove();
+				}
+				
+			}
+		}.runTaskTimer(plugin, 0, 20);
 	}
 	
 	public static void save() {
+		for(CustomThread t : threads) {
+			t.st();
+		}
 		teammanager.save();
 		plugin.saveConfig();
 		battlemanager.save();
@@ -78,10 +105,33 @@ public class Core extends JavaPlugin {
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected static ItemStack loadItem(String filepath) {
+	protected static ItemStack loadItem(String filename) {
+		sender.sendMessage("경고:모든 아이템 json 파일은 UTF-8 혹은 UTF-8(BOM)형식으로 인코딩 되어야 합니다.");
 		try {
 			JSONParser jparser = new JSONParser();
-			JSONObject jobj= (JSONObject) jparser.parse(new BufferedReader(new InputStreamReader(new FileInputStream("plugins/Kukga/pap.json"),"UTF8")));
+			File f = new File("plugins/Kukga/" + filename);
+			if(!f.exists()) {
+				try(BufferedInputStream bi = new BufferedInputStream(new URL("https://raw.githubusercontent.com/tmvkrpxl0/tmvkrpxl0_Nation_Plugin/"
+						+ "master/" + URLEncoder.encode(filename, "UTF-8")).openStream())){
+					f.getParentFile().mkdirs();
+					f.createNewFile();
+					FileOutputStream out = new FileOutputStream(f);
+					byte [] buffer = new byte[2048];
+					int byteread;
+					while((byteread = bi.read(buffer, 0, 2048)) != -1) {
+						out.write(buffer, 0, byteread);
+					}
+					out.close();
+					bi.close();
+				} catch (IOException e) {
+					sender.sendMessage(filename + "을(를) 다운받는 중 문제가 발생했습니다!");
+					e.printStackTrace();
+				}
+			}
+			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream("plugins/Kukga/" + filename),"UTF-8"));
+			String json = br.readLine();//"\uFEFF"
+			if(json.startsWith("\uFEFF"))json = json.substring(1);
+			JSONObject jobj= (JSONObject) jparser.parse(json);
 			String type = (String) jobj.get("type");
 			String cl = (String) jobj.get("==");
 			Map<String, Object> meta = (Map<String, Object>) jobj.get("meta");
@@ -92,6 +142,8 @@ public class Core extends JavaPlugin {
 			imeta.setDisplayName((String) meta.get("display-name"));
 			imeta.setLore((ArrayList<String>)meta.get("lore"));
 			stack.setItemMeta(imeta);
+			stack.setAmount(1);
+			br.close();
 			return stack;
 			}catch(Exception e) {
 				e.printStackTrace();

@@ -25,8 +25,12 @@ public class PacketHandler extends ChannelDuplexHandler {
 	}
 	 @Override public void channelRead(ChannelHandlerContext c, Object m) throws Exception { 
 		 if(m.getClass().getSimpleName().equalsIgnoreCase("PacketPlayInBlockDig") && listener.mining.containsKey(p) && listener.mining.get(p)) {
-			 String e = m.getClass().getField("e").toString();
-			 if(e.equals("1") && e.equals("2"))p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+			 String e = Reflection.getFieldValue(m, "e").toString();
+			 Core.broadcast("mining");
+			 if(e.equals("1") || e.equals("2")) {
+				 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+				 listener.mining.remove(p);
+			 }
 			 super.channelRead(c, m);
 	 } else { super.channelRead(c, m); } }
 	 
