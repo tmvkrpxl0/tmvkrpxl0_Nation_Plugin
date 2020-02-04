@@ -145,7 +145,10 @@ public class listener implements Listener {
 	@EventHandler
 	public void onChat(AsyncPlayerChatEvent event){
 		if(choose.containsKey(event.getPlayer()) && choose.get(event.getPlayer())) {
-			if(TeamManager.getTeamList().contains(event.getMessage())) {
+			if(event.getMessage().equals(TeamManager.getNation(event.getPlayer().getName()))) {
+				event.getPlayer().sendMessage("당신의 국가에 전쟁을 선포할 수 없습니다!");
+			}
+			else if(TeamManager.getTeamList().contains(event.getMessage())) {
 				if(event.getPlayer().getInventory().contains(Core.declarepaper)) {
 				BattleManager.declare(new String [] {TeamManager.getNation(event.getPlayer().getName()), event.getMessage()});
 				event.getPlayer().getInventory().remove(Core.declarepaper);

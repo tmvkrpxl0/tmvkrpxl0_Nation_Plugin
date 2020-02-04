@@ -64,6 +64,7 @@ public class Core extends JavaPlugin {
 		sender.sendMessage("[" + pdFile.getFullName() + ": " + pdFile.getDescription() + "]");
 		sender.sendMessage("####################################");
 		getCommand("국가").setExecutor(new Command());
+		getCommand("국가").setTabCompleter(new TabComplete());
 		injector = new PacketInjector();
 		declarepaper = loadItem("전쟁선포권.json");
 		defendpaper = loadItem("국가방어권.json");
@@ -77,6 +78,13 @@ public class Core extends JavaPlugin {
 				
 			}
 		}.runTaskTimer(plugin, 0, 20);
+		sender.sendMessage("주의! OP권한이 있으면 이 플러그인의 권한 시스템이 작동하지 않게 됩니다!");
+		sender.sendMessage("주의! OP권한이 있으면 이 플러그인의 권한 시스템이 작동하지 않게 됩니다!");
+		sender.sendMessage("만약 당신이 이 서버에서 플레이를 하게 된다면, 무조건 OP를 해제하세요!");
+		sender.sendMessage("만약 당신이 이 서버에서 플레이를 하게 된다면, 무조건 OP를 해제하세요!");
+		sender.sendMessage("타 권한 플러그인와 같이 사용해야만 합니다!");
+		sender.sendMessage("타 권한 플러그인와 같이 사용해야만 합니다!");
+		sender.sendMessage("2번 나오는거 중요해서 2번알려주는겁니다!");
 	}
 	
 	public static void save() {
