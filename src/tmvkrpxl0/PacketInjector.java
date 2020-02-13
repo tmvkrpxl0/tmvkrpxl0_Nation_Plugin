@@ -1,10 +1,9 @@
 package tmvkrpxl0;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 import org.bukkit.entity.Player;
-
-import net.minecraft.util.io.netty.channel.Channel;
 
 /*Author of this Class is Fr33Style
 I do not own this class
@@ -29,30 +28,48 @@ public class PacketInjector {
 	  PlayerConnection_networkManager = Reflection.getField(PlayerConnection, "networkManager");
 
 	  NetworkManager = Reflection.getClass("{nms}.NetworkManager");
-	  k = Reflection.getField(NetworkManager, "k");
-	  m = Reflection.getField(NetworkManager, "m");
+	  for(Field f : NetworkManager.getDeclaredFields()) {
+		  if(f.getType().equals(java.util.Queue.class))k = f;
+		  else if(f.getType().equals(Reflection.getClass("{netty}.Channel")))m = f;
+		  }
 	  } catch (Throwable t) {
 	  t.printStackTrace();
 	  }
 	  }
 
-	  public void addPlayer(Player p) {
+	  protected void addPlayer(Player p) {
 	  try {
-	  Channel ch = getChannel(getNetworkManager(Reflection.getNmsPlayer(p)));
-	  if(ch.pipeline().get("PacketInjector") == null) {
-	  PacketHandler h = new PacketHandler(p);
-	  ch.pipeline().addBefore("packet_handler", "PacketInjector", h);
+		  Method pipe = Reflection.getClass("{netty}.Channel").getMethod("pipeline");
+		  pipe.setAccessible(true);
+		  Object chpipe = pipe.invoke(getChannel(getNetworkManager(Reflection.getNmsPlayer(p))));
+		  Method get = chpipe.getClass().getMethod("get", String.class);
+		  get.setAccessible(true);
+	  if(get.invoke(chpipe, "PacketInjector") == null) {
+		  Method addBefore = chpipe.getClass().getMethod("addBefore", String.class, String.class, Reflection.getClass("{netty}.ChannelHandler"));
+		  addBefore.setAccessible(true);
+		  try {
+			  Class.forName("net.minecraft.util.io.netty.channel.ChannelDuplexHandler");
+			  addBefore.invoke(chpipe, "packet_handler", "PacketInjector", new PacketHandler(p));
+		  }catch(ClassNotFoundException e) {
+			  addBefore.invoke(chpipe, "packet_handler", "PacketInjector", new PacketHandlerNew(p));
+		  }
 	  }
 	  } catch (Throwable t) {
 	  t.printStackTrace();
 	  }
 	  }
 
-	  public void removePlayer(Player p) {
+	  protected void removePlayer(Player p) {
 	  try {
-	  Channel ch = getChannel(getNetworkManager(Reflection.getNmsPlayer(p)));
-	  if(ch.pipeline().get("PacketInjector") != null) {
-	  ch.pipeline().remove("PacketInjector");
+	  Method pipeline = Reflection.getClass("{netty}.Channel").getMethod("pipeline");
+	  pipeline.setAccessible(true);
+	  Object chpipe = pipeline.invoke(getChannel(getNetworkManager(Reflection.getNmsPlayer(p))));
+	  Method get = chpipe.getClass().getMethod("get", String.class);
+	  get.setAccessible(true);
+	  if(get.invoke(chpipe, "PacketInjector") != null) {
+		  Method remove = chpipe.getClass().getMethod("remove", String.class);
+		  remove.setAccessible(true);
+		  remove.invoke(chpipe, "PacketInjector");
 	  }
 	  } catch (Throwable t) {
 	      t.printStackTrace();
@@ -60,16 +77,18 @@ public class PacketInjector {
 	  }
 
 	  private Object getNetworkManager(Object ep) {
-	  return Reflection.getFFieldValue(PlayerConnection_networkManager, Reflection.getFFieldValue(EntityPlayer_playerConnection, ep));
+		  Object obj = Reflection.getFieldValue(EntityPlayer_playerConnection, ep);
+		  return Reflection.getFieldValue(PlayerConnection_networkManager, obj);
 	  }
 
-	  private Channel getChannel(Object networkManager) {
-	  Channel ch = null;
-	  try {
-	  ch = Reflection.getFFieldValue(k, networkManager);
-	  } catch (Exception e) {
-	  ch = Reflection.getFFieldValue(m, networkManager);
-	  }
-	  return ch;
-	  }
+	  private Object getChannel(Object networkManager) {
+		  Object ch = null;
+		  try {
+		  ch = Reflection.getFieldValue(k, networkManager);
+		  if(!ch.getClass().equals(Reflection.getClass("{netty}.Channel")))ch = Reflection.getFieldValue(m, networkManager);
+		  } catch (Exception e) {
+		  ch = Reflection.getFieldValue(m, networkManager);
+		  }
+		  return ch;
+		  }
 	}

@@ -1,14 +1,25 @@
 package tmvkrpxl0;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
+
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
+import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.craftbukkit.v1_7_R4.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 
-import net.md_5.bungee.api.ChatColor;
-import net.minecraft.server.v1_7_R4.PacketPlayOutWorldParticles;
+import tmvkrpxl0.Config.CustomConfig;
 
 
 public class Command implements CommandExecutor{
@@ -26,13 +37,24 @@ public class Command implements CommandExecutor{
 			"저장 - 국가 구성원 정보를 저장합니다.",
 			"설정 - 국가 플러그인을 설정합니다",
 			"test "};
+	protected static final String [] settings = {"전쟁준비시간", 
+			"전쟁시간",
+			"재시작이후대기시간",
+			"재시작이후준비시간",
+			"최소거리",
+			"최소아군거리",
+			"신호기파괴시간",
+			"철문파괴시간",
+			"초기화",
+			"패치"};
 			//중요: 명령어를 추가할 때, 설명은 적지 않더라도 공백은 뒤에 쓸것 예시: "xxxx " 처럼 뒤에 공백)
 	@Override
 	public boolean onCommand(CommandSender sender, org.bukkit.command.Command cmd, String label, String[] args) {
-		if(!(sender instanceof Player)) {
+		Player p = null;
+		if(!(sender instanceof Player) && !(args.length >= 1 && (args[0].equals("설정") || args[0].equals("저장")))) {
 			sender.sendMessage(Core.prefix + "오직 플레이어만 사용할 수 있습니다!");
 			return true;
-		}
+		}else if(sender instanceof Player)p = (Player) sender;
 		boolean right = false;
 		if(args.length > 0) {
 			for(String s : available) {
@@ -42,7 +64,6 @@ public class Command implements CommandExecutor{
 				}
 			}
 			if(!right)printUsage(sender);
-			Player p = (Player) sender;
 			switch(args[0]) {
 			case "생성":
 				if(sender.hasPermission("kukga.create")) {
@@ -65,7 +86,7 @@ public class Command implements CommandExecutor{
 							sender.sendMessage("전쟁중에는 사용할 수 없습니다!");
 							return true;
 						}
-						if(TeamManager.getNation(p.getName())!=null) {
+						if(TeamManager.getNation(sender.getName())!=null) {
 						if(args.length > 1) {
 							if(args[1].equals(TeamManager.getNation(sender.getName()))) {
 								TeamManager.deleteTeam(TeamManager.getNation(sender.getName()));
@@ -84,8 +105,8 @@ public class Command implements CommandExecutor{
 					}
 					if(args.length > 1) {
 						if(Bukkit.getPlayerExact(args[1]) != null) {
-							if(args[1].equals(p.getName())) {
-								p.sendMessage("당신을 초대할 수 없습니다!");
+							if(args[1].equals(sender.getName())) {
+								sender.sendMessage("당신을 초대할 수 없습니다!");
 								return true;
 							}
 							if(TeamManager.getNation(args[1])!=null) {
@@ -131,9 +152,9 @@ public class Command implements CommandExecutor{
 									sender.sendMessage("왕 또는 관리자는 추방될 수 없습니다!");
 									return true;
 								}
-								if(args[1].equals(p.getName())) {
-									p.sendMessage("당신을 추방할 수 없습니다!");
-									p.sendMessage("[/국가 탈퇴] 를 사용하여 나갈 수 있습니다");
+								if(args[1].equals(sender.getName())) {
+									sender.sendMessage("당신을 추방할 수 없습니다!");
+									sender.sendMessage("[/국가 탈퇴] 를 사용하여 나갈 수 있습니다");
 									return true;
 								}
 								Bukkit.getPlayerExact(args[1]).sendMessage(ChatColor.RED + "당신은 " + TeamManager.getNation(args[1]) + "국가에서 추방당하셨습니다!");
@@ -161,33 +182,292 @@ public class Command implements CommandExecutor{
 					if((p).getInventory().contains(Core.declarepaper)) {
 						sender.sendMessage(Core.prefix + "전쟁선포를 할 국가를 입력하세요");
 						listener.choose.put(p, true);
-					}else p.sendMessage("전쟁선포권이 없습니다!");
+					}else sender.sendMessage("전쟁선포권이 없습니다!");
 				}else sender.sendMessage("이 명령어를 사용하시려면 왕이어야만 합니다!");
 				break;
 			case "전쟁방어":
-				if(p.hasPermission("kukga.secondary")) {
+				if(sender.hasPermission("kukga.secondary")) {
 					if(p.getInventory().contains(Core.defendpaper)) {
-						if(BattleManager.warWithWho(TeamManager.getNation(p.getName()))!=null) {
-							BattleManager.remove(TeamManager.getNation(p.getName()));
-							sender.sendMessage("전쟁 방어권을 사용하여, 전쟁을 무효화 시키는데 성공했습니다!");
-							String [] bs = BattleManager.warWithWho(TeamManager.getNation(p.getName()));
-							Bukkit.getPlayerExact(TeamManager.getTeam((bs[0].equals(TeamManager.getNation(p.getName()))?bs[1]:bs[0])).get(0)).sendMessage(
-									"적 국가가 전쟁 방어권을 사용하여, 전쟁이 취소되었습니다!");
+						if(BattleManager.warWithWho(TeamManager.getNation(sender.getName()))!=null) {
+							BattleManager.remove(TeamManager.getNation(sender.getName()));
+							for(String pt : TeamManager.getTeam(TeamManager.getNation(sender.getName()))) {
+								Bukkit.getPlayerExact(pt).sendMessage(Core.prefix + "전쟁 방어권을 사용하여, " + 
+										BattleManager.getOpponent(TeamManager.getNation(pt)) + "국과의 전쟁을 무효화 시켰습니다!");
+							}
+							for(String pt : TeamManager.getTeam(BattleManager.getOpponent(TeamManager.getNation(sender.getName())))) {
+								Bukkit.getPlayerExact(pt).sendMessage(Core.prefix + TeamManager.getNation(sender.getName()) + 
+										"국이 전쟁 방어권을 사용해 전쟁을 취소시켰습니다!");
+							}
 						}else sender.sendMessage("전쟁중이 아닙니다!");
 					}else sender.sendMessage("전쟁 방어권이 없습니다!");
 			}else sender.sendMessage("이 명령어를 사용하시려면 왕이어야만 합니다!");
 				break;
 			case "저장":
-				if((p).hasPermission("minecraft.command.op"))
-				Core.save();
-				else sender.sendMessage("오직 관리자만 사용가능합니다!");
+				if(sender.hasPermission("minecraft.command.op")) {
+					if(!Core.patch) {
+						Core.save();
+					}else sender.sendMessage("저장할 수 없습니다! 버킷을 패치해야 합니다!");
+				}else sender.sendMessage("오직 관리자만 사용가능합니다!");
+				break;
+			case "설정":
+				if(sender.hasPermission("minecraft.command.op")) {
+					if(args.length == 2) {
+							switch(args[1]) {
+								case "전쟁준비시간":
+									sender.sendMessage(Core.prefix + "현제 전쟁 준비시간은 " + BattleManager.secondsToString(Core.Config.getWar().get("preparing time")) +
+											"입니다");
+									sender.sendMessage("변경시에는 초를 적어주세요");
+									break;
+								case "전쟁시간":
+									sender.sendMessage(Core.prefix + "현제 전쟁 시간은 " + BattleManager.secondsToString(Core.Config.getWar().get("battle time")) +
+											"입니다");
+									sender.sendMessage("변경시에는 초를 적어주세요");
+									break;
+								case "재시작이후대기시간":
+									sender.sendMessage(Core.prefix + "현제 재시작 이후 대기시간은 " + BattleManager.secondsToString(
+											Core.Config.getWar().get("delay message time after server restart")) + "입니다");
+									sender.sendMessage(Core.prefix + "이 설정은, 서버가 재시작 했을때 전쟁중이던 국가가 있다면 타이머가 다시 시작된다는 메세지를 몇초뒤에 알릴지 조절합니다");
+									sender.sendMessage("변경시에는 초를 적어주세요");
+									break;
+								case "재시작이후준비시간":
+									sender.sendMessage(Core.prefix + "현제 재시작 이후 준비시간은 " + BattleManager.secondsToString(
+											Core.Config.getWar().get("re-preparing time after server restart")) +"입니다");
+									sender.sendMessage(Core.prefix + "이 설정은, 서버가 재시작 했을때 전쟁중이던 국가가 있다면 몇초만큼의 준비시간을 추가로 줄지 결정합니다");
+									sender.sendMessage(Core.prefix + "만약 남아있는 준비시간이 설정값보다 많다면, 무시됩니다");
+									sender.sendMessage("변경시에는 초를 적어주세요");
+									break;
+								case "최소거리":
+									sender.sendMessage(Core.prefix + "현제 최소 거리는 " + Core.Config.getTerritory().get("minDistance") +
+											"M 입니다");
+									sender.sendMessage(Core.prefix + "이 설정은, 영지끼리의 최소 거리를 결정합니다. 이 최소거리안은 다른 영지의 영토로 같이 취급되며, 그 영토 안에서는 영지를 소유하고 있는 국가가 아니라면, " 
+											+ "지형 변경, 영지 건설 등이 불가능합니다");
+									sender.sendMessage("변경시에는 M로 적어주세요");
+									break;
+								case "최소아군거리":
+									sender.sendMessage(Core.prefix + "현제 최소 아군거리는 " + Core.Config.getTerritory().get("minDistanceFriendly") + "M 입니다.");
+									sender.sendMessage(Core.prefix + "이 설정은, 아군 영지끼리 너무 가깝게 놓지 않도록 방지합니다. 이도 최소거리랑 동일하게, 모서리와 신호기로부터 얼마나 떨어져 있는가로 측정합니다");
+									sender.sendMessage("변경시에는 M로 적어주세요");
+									break;
+								case "신호기파괴시간":
+									sender.sendMessage(Core.prefix + "현제 신호기 파괴 시간은 " + BattleManager.secondsToString(Core.Config.getTerritory().get("beaconBreakTime"))
+									+ "입니다");
+									sender.sendMessage("변경시에는 초를 적어주세요");
+									break;
+								case "철문파괴시간":
+									sender.sendMessage(Core.prefix + "현제 철문 파괴 시간은 " + BattleManager.secondsToString(Core.Config.getTerritory().get("ironDoorBreakTime"))
+									+ "입니다");
+									sender.sendMessage("변경시에는 초를 적어주세요");
+									break;
+								case "초기화":
+									sender.sendMessage(Core.prefix + "진짜 설정을 초기화 하시겠습니까?");
+									sender.sendMessage(Core.prefix + "진짜 초기화를 하시려면, [/국가 설정 초기화 confirm] 을 입력하세요");
+									sender.sendMessage("/국가 설정 으로 설정할 수 있는 설정만 초기화 되며, 영토나 팀 설정은 영향받지 않습니다");
+								case "패치":
+									if(Core.patch) {
+										sender.sendMessage("버킷 파일 이름을 적어주세요 예시:[/국가 설정 패치 Spigot.jar]");
+										break;
+									}
+								default:
+									sender.sendMessage("사용 가능한 설정들:");
+									for(String s : settings) {
+										sender.sendMessage(Core.prefix + "/국가 설정 " + s);
+									}
+									break;
+								}
+								return true;
+					}else if(args.length > 2) {
+						try {
+							switch(args[1]) {
+							case "전쟁준비시간":
+								Core.Config.getWar().put("preparing time", Integer.parseInt(args[2]));
+								sender.sendMessage(Core.prefix + "전쟁 준비시간이 " + BattleManager.secondsToString(Integer.parseInt(args[2])) + "(으)로 변경되었습니다!");
+								break;
+							case "전쟁시간":
+								Core.Config.getWar().put("battle time", Integer.parseInt(args[2]));
+								sender.sendMessage(Core.prefix + "전쟁 시간이 " + BattleManager.secondsToString(Integer.parseInt(args[2])) + "(으)로 변경되었습니다!");
+								break;
+							case "재시작이후대기시간":
+								Core.Config.getWar().put("delay message time after server restart", Integer.parseInt(args[2]));
+								sender.sendMessage(Core.prefix + "재시작 이후 대기시간이" + BattleManager.secondsToString(Integer.parseInt(args[2])) + "(으)로 변경되었습니다!");
+								break;
+							case "재시작이후준비시간":
+								Core.Config.getWar().put("re-preparing time after server restart", Integer.parseInt(args[2]));
+								sender.sendMessage(Core.prefix + "재시작 이후 준비시간이" + BattleManager.secondsToString(Integer.parseInt(args[2])) + "(으)로 변경되었습니다!");
+								break;
+							case "최소거리":
+								Core.Config.getTerritory().put("minDistance", Integer.parseInt(args[2]));
+								sender.sendMessage(Core.prefix + "최소 거리가 " + BattleManager.secondsToString(Integer.parseInt(args[2])) + "M 로 변경되었습니다!");
+								break;
+							case "최소아군거리":
+								Core.Config.getTerritory().put("minDistanceFriendly", Integer.parseInt(args[2]));
+								sender.sendMessage(Core.prefix + "최소 아군 거리가 " + BattleManager.secondsToString(Integer.parseInt(args[2])) + "M 로 변경되었습니다!");
+								break;
+							case "신호기파괴시간":
+								Core.Config.getTerritory().put("beaconBreakTime", Integer.parseInt(args[2]));
+								sender.sendMessage(Core.prefix + "신호기 파괴 시간이 " + BattleManager.secondsToString(Integer.parseInt(args[2])) + "(으)로 변경되었습니다!");
+								listener.changeHardness(Material.BEACON, Integer.parseInt(args[2]));
+								break;
+							case "철문파괴시간":
+								Core.Config.getTerritory().put("ironDoorBreakTime", Integer.parseInt(args[2]));
+								sender.sendMessage(Core.prefix + "철문 파괴 시간이 " + BattleManager.secondsToString(Integer.parseInt(args[2])) + "(으)로 변경되었습니다!");
+								listener.changeHardness(Material.IRON_DOOR, Integer.parseInt(args[2]));
+								listener.changeHardness(Material.IRON_DOOR_BLOCK, Integer.parseInt(args[2]));
+								break;
+							case "초기화":
+								if(args[2].equals("confirm")) {
+									File f = new File(Core.plugin.getDataFolder() + File.separator + "config.yml");
+									if(f.exists())f.delete();
+									Core.plugin.saveDefaultConfig();
+									Core.Config = (CustomConfig) Core.loadFile("config.yml", CustomConfig.class);
+									sender.sendMessage(Core.prefix + "초기화 되었습니다!");
+								}else {
+									sender.sendMessage(Core.prefix + "진짜 설정을 초기화 하시겠습니까?");
+									sender.sendMessage(Core.prefix + "진짜 초기화를 하시려면, [/국가 설정 초기화 confirm] 을 입력하세요");
+									sender.sendMessage("/국가 설정 으로 설정할 수 있는 설정만 초기화 되며, 영토나 팀 설정은 영향받지 않습니다");
+								}
+								break;
+							case "패치":
+								if(Core.patch) {
+									Thread t = new Thread() {
+										public void run() {
+											try {
+												byte [] tb = new byte[1024*8];
+												int read;
+												sender.sendMessage("패치를 시작합니다. 절대 PATCH_TEMP 폴더를 건드리지 마세요");
+												Method getf = org.bukkit.plugin.java.JavaPlugin.class.getDeclaredMethod("getFile");
+												getf.setAccessible(true);
+												File pluginjar = (File) getf.invoke((org.bukkit.plugin.java.JavaPlugin)org.bukkit.Bukkit.getServer().getPluginManager().getPlugin("Kukga"));
+												{
+													{File libs = new File("PATCH_TEMP" + File.separator + "Libs");
+													if(!libs.exists())libs.mkdirs();}
+													java.util.jar.JarFile jar = new java.util.jar.JarFile(pluginjar);
+												Enumeration<JarEntry> enumEntries = jar.entries();
+												while (enumEntries.hasMoreElements()) {
+														try {
+															Thread.sleep(1);
+														} catch (InterruptedException e) {
+														}
+												    java.util.jar.JarEntry file = (java.util.jar.JarEntry) enumEntries.nextElement();
+												    File f = new File("PATCH_TEMP" + File.separator + "Libs" + File.separator + file.getName());
+												    f.getParentFile().mkdirs();
+												    if (file.isDirectory()) { // if its a directory, create it
+												        f.mkdirs();
+												        continue;
+												    }
+												    BufferedInputStream bi = new BufferedInputStream(jar.getInputStream(file)); // get the input stream
+												    BufferedOutputStream bo = new BufferedOutputStream(new FileOutputStream(f));
+												    while ((read = bi.read(tb, 0, 1024 * 8))!=-1) {  // write contents of 'is' to 'fos'
+												        bo.write(tb, 0, read);
+												    }
+												    Arrays.fill(tb,(byte)0);
+													read = 0;
+												    bi.close();
+												    bo.close();
+												}
+												jar.close();
+												}
+												sender.sendMessage("버킷에 Snakeyaml 과 Jackson 라이브러리를 추가합니다");
+												sender.sendMessage("이 플러그인의 제작자는 위 두 라이브러리에 대한 저작권을 가지고 있지 않습니다. 위 두 라이브러리는 Apache 2.0 라이선스를 따르며, 오픈소스입니다");
+												sender.sendMessage("다되면 다됬다고 메세지가 올것입니다. 아무일도 안일어난다고 해서 뭔가 오류가 난게 아닙니다");
+												sender.sendMessage("만약 서버 콘솔을 볼 수 있으시다면 가끔 보시는걸 추천드립니다");
+												try {
+													Thread.sleep(1);
+												} catch (InterruptedException e3) {
+												}
+												StringBuilder bukkit = new StringBuilder();
+												for(int i = 2;i<args.length;i++) {
+													bukkit.append(args[i].replaceAll("[/:?*<>|]", "").replace("\\", ""));
+													if(args.length - i > 1)bukkit.append(" ");
+												}
+												{
+													
+													File j = new File(bukkit.toString());
+													java.util.jar.JarFile jar = new java.util.jar.JarFile(j);
+												Enumeration<JarEntry> enumEntries = jar.entries();
+												File patch = new File("PATCH_TEMP" + File.separator + "Bukkit");
+												if(!patch.exists())patch.mkdirs();
+												while (enumEntries.hasMoreElements()) {
+														try {
+															Thread.sleep(1);
+														} catch (InterruptedException e) {
+														}
+												    java.util.jar.JarEntry file = (java.util.jar.JarEntry) enumEntries.nextElement();
+												    File f = new File("PATCH_TEMP" + File.separator + "Bukkit" + File.separator + file.getName());
+												    f.getParentFile().mkdirs();
+												    if (file.isDirectory()) { // if its a directory, create it
+												        f.mkdirs();
+												        continue;
+												    }
+												    BufferedInputStream bi = new BufferedInputStream(jar.getInputStream(file)); // get the input stream
+												    BufferedOutputStream bo = new BufferedOutputStream(new FileOutputStream(f));
+												    while ((read = bi.read(tb, 0, 1024 * 8))!=-1) {  // write contents of 'is' to 'fos'
+												        bo.write(tb, 0, read);
+												    }
+												    Arrays.fill(tb,(byte)0);
+													read = 0;
+												    bi.close();
+												    bo.close();
+												}
+												jar.close();
+												}
+												Class<?> futil = null;
+													try {
+														futil = Class.forName("net.minecraft.util.org.apache.commons.io.FileUtils");
+													}catch(ClassNotFoundException e) {
+														futil = Class.forName("org.apache.commons.io.FileUtils");
+													}
+													
+												Method copydir = futil.getDeclaredMethod("copyDirectory", File.class, File.class);
+												copydir.setAccessible(true);
+												Method deldir = futil.getDeclaredMethod("deleteDirectory", File.class);
+												deldir.setAccessible(true);
+												File bc = new File("PATCH_TEMP" + File.separator + "Bukkit" + File.separator + "com" + File.separator + "fasterxml");
+												if(bc.exists())deldir.invoke(null, bc);
+												bc.mkdirs();
+												File bo = new File("PATCH_TEMP" + File.separator + "Bukkit" + File.separator + "org" + File.separator + "yaml");
+												if(bo.exists())deldir.invoke(null, bo);
+												bo.mkdirs();
+												File tc = new File("PATCH_TEMP" + File.separator + "Libs" + File.separator + "com" + File.separator + "fasterxml");
+												File to = new File("PATCH_TEMP" + File.separator + "Libs" + File.separator + "org" + File.separator + "yaml");
+												copydir.invoke(null, tc, bc);
+												copydir.invoke(null, to, bo);
+												jarFile("PATCH_TEMP" + File.separator + "Bukkit", bukkit.toString().replace(".jar", "_PATCHED.jar"), true);
+												sender.sendMessage(ChatColor.GREEN + "패치가 끝났습니다. 서버를 종료합니다. 앞으로 서버를 여실때는, _PATCHED.jar로 끝나는 파일로 서버를 여세요");
+												sender.sendMessage(ChatColor.BLUE + "만약 서버가 패치 이후 정상적으로 켜지지 않는 문제가 발생한다면, PATCH_TEMP 폴더를 수동으로 .jar 파일로 압축해보세요");
+												sender.sendMessage(ChatColor.BLUE + "문제가 없으시다면 지우셔도 됩니다");
+												Core.broadcast("5초뒤에 서버가 재시작 됩니다..");
+												new org.bukkit.scheduler.BukkitRunnable() {
+													public void run() {
+														Bukkit.getServer().shutdown();
+													}
+												}.runTaskLater(Core.plugin, 20*5);
+											} catch (Throwable e) {
+												sender.sendMessage(ChatColor.RED + "문제가 발생했습니다. 콘솔을 확인해주세요");
+												e.printStackTrace();
+											}
+										}
+									};
+									t.start();
+									break;
+								}
+							default:
+								sender.sendMessage("사용 가능한 설정들:");
+								for(String s : settings) {
+									sender.sendMessage(Core.prefix + "/국가 설정 " + s);
+								}
+								break;
+							}
+						}catch (NumberFormatException e) {
+							sender.sendMessage("무조건 숫자여야만 합니다!");
+						}
+						return true;
+					}
+					for(String s : settings) {
+						sender.sendMessage(Core.prefix + "/국가 설정 " + s);
+					}
+				}else sender.sendMessage("관리자만 사용 가능합니다!");
 				break;
 			case "test":
-				if(!p.hasPermission("minecraft.command.op")) {
-					p.sendMessage("테스트 명령어 입니다! 오직 관리자만 사용가능합니다!");
-					break;
-				}
-				p.sendMessage("테스트 명령어가 존재하지 않을 수 있습니다");
 				break;
 				
 			}
@@ -197,33 +477,48 @@ public class Command implements CommandExecutor{
 		return right;
 	}
 	
-	public static void createCircle(Location loc, int radius, double time, int dense) {
-		new Thread() {
-			double repeat = 0;
-			@SuppressWarnings("deprecation")
-			public void run() {
-				while(repeat<=100) {
-					double x = radius * Math.cos(repeat);
-					double z = radius * Math.sin(repeat);
-					PacketPlayOutWorldParticles packet = new PacketPlayOutWorldParticles("fireworksSpark", (float) (loc.getX() + x), (float) (loc.getY()), (float) (loc.getZ() + z), 200, 200, 200, 200, 1);
-					for(Player online : Bukkit.getOnlinePlayers()) {
-						((CraftPlayer)online).getHandle().playerConnection.sendPacket(packet);
-					}
-					try {
-						Thread.sleep(100/dense);
-					}catch(InterruptedException e) {
-						e.printStackTrace();
-						}
-					repeat+=100.0/time;
-					}
-				Core.broadcast("END!");
-			}
-		}.start();;
-	}
-	
 	private void printUsage(CommandSender sender) {
 			for(String s : available) {
 				sender.sendMessage(Core.prefix +  ChatColor.BOLD + "/국가 " + s);
 			}
 	}
+	
+	static public void jarFile(String fileToJar, String jarFile, boolean excludeContainingFolder)
+    	    throws IOException {		
+    	    JarOutputStream jarOut = new JarOutputStream(new FileOutputStream(jarFile));		
+    	    File srcFile = new File(fileToJar);
+    	    if(excludeContainingFolder && srcFile.isDirectory()) {
+    	      for(String fileName : srcFile.list()) {
+    	        addToJar("", fileToJar + "/" + fileName, jarOut);
+    	      }
+    	    } else {
+    	      addToJar("", fileToJar, jarOut);
+    	    }
+
+    	    jarOut.flush();
+    	    jarOut.close();
+
+    	    System.out.println("Successfully created " + jarFile);
+    	  }
+
+    	  static private void addToJar(String path, String srcFile, JarOutputStream jarOut)
+    	    throws IOException {		
+    	    File file = new File(srcFile);
+    	    String filePath = "".equals(path) ? file.getName() : path + "/" + file.getName();
+    	    if (file.isDirectory()) {
+    	      for (String fileName : file.list()) {				
+    	        addToJar(filePath, srcFile + "/" + fileName, jarOut);
+    	      }
+    	    } else {
+    	      jarOut.putNextEntry(new JarEntry(filePath));
+    	      FileInputStream in = new FileInputStream(srcFile);
+
+    	      byte[] buffer = new byte[8192];
+    	      int len;
+    	      while ((len = in.read(buffer, 0, 8192)) != -1) {
+    	        jarOut.write(buffer, 0, len);
+    	      }
+    	      in.close();
+    	    }
+    	  }
 }

@@ -1,48 +1,28 @@
 package tmvkrpxl0;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
+
+import tmvkrpxl0.Config.TeamConfig;
 
 public class TeamManager {
-	private static LinkedHashMap<String, LinkedList<String>> team;;
+	private static Map<String, List<String>> team;
 	protected static LinkedHashMap<String, String> invites;
-	private FileConfiguration data;
 	ConsoleCommandSender sender = Core.sender;
-	@SuppressWarnings("unchecked")
 	protected TeamManager(){
 		//여기서 팀 정보를 불러오기도 합니다
-		data = YamlConfiguration.loadConfiguration(new File(Core.plugin.getDataFolder(), "팀.yml"));
-		team = new LinkedHashMap<String, LinkedList<String>>();
-		if(data.getConfigurationSection("팀")!=null) {
-			Map<String, Object> t = data.getConfigurationSection("팀").getValues(false);
-			for(String s : t.keySet()) {
-				LinkedList<String> ls = new LinkedList<String>();
-				for(String as : (ArrayList<String>)t.get(s)) {
-					ls.add(as);
-				}
-				team.put(s, ls);
-			}
-		}
+		team = ((TeamConfig)Core.loadFile("팀.yml", TeamConfig.class)).getTeams();
 		invites = new LinkedHashMap<String, String>();
 	}
 	
 	protected void save(){
-		data.createSection("팀", team);
-		try {
-			data.save(new File(Core.plugin.getDataFolder(), "팀.yml"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		Core.saveFile("팀.yml", TeamConfig.class, new TeamConfig(team));
 	}
 	
 	protected static String getNation(String name) {
@@ -84,18 +64,18 @@ public class TeamManager {
 	}
 	
 	protected static void joinTeam(String playername, String nation){
-		LinkedList<String> t = team.get(nation);
+		List<String> t = team.get(nation);
 		t.add(playername);
 		team.put(nation, t);
 	}
 	
 	protected static void leaveTeam(String playername, String nation){
-		LinkedList<String> t = team.get(nation);
+		List<String> t = team.get(nation);
 		t.remove(playername);
 		team.put(nation, t);
 	}
 	
-	protected static LinkedList<String> getTeam(String nation){
+	protected static List<String> getTeam(String nation){
 		return team.get(nation);
 	}
 	
