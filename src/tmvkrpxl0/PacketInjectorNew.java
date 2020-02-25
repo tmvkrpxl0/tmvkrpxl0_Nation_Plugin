@@ -3,11 +3,13 @@ import java.lang.reflect.Field;
 
 import org.bukkit.entity.Player;
 
-import net.minecraft.util.io.netty.channel.Channel;
+import io.netty.channel.Channel;
+
+
 /*
  * This class is made by Fr33style
  */
-public class PacketInjector implements PacketInjectorInterface{
+public class PacketInjectorNew implements PacketInjectorInterface{
 
   private Field EntityPlayer_playerConnection;
   private Class<?> PlayerConnection;
@@ -17,7 +19,7 @@ public class PacketInjector implements PacketInjectorInterface{
   private Field k;
   private Field m;
 
-  public PacketInjector() {
+  public PacketInjectorNew() {
   try {
   EntityPlayer_playerConnection = Reflection.getField(Reflection.getClass("{nms}.EntityPlayer"), "playerConnection");
 
@@ -37,14 +39,14 @@ public class PacketInjector implements PacketInjectorInterface{
   try {
   Channel ch = getChannel(getNetworkManager(Reflection.getNmsPlayer(p)));
   if(ch.pipeline().get("PacketInjector") == null) {
-  PacketHandler h = new PacketHandler(p);
+  PacketHandlerNew h = new PacketHandlerNew(p);
   ch.pipeline().addBefore("packet_handler", "PacketInjector", h);
   }
   } catch (Throwable t) {
   t.printStackTrace();
   }
   }
-  
+
   @Override
   public void removePlayer(Player p) {
   try {

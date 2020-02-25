@@ -1,25 +1,22 @@
 package tmvkrpxl0;
 
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Damageable;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
-import org.bukkit.event.block.BlockPistonExtendEvent;
-import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.entity.EntityExplodeEvent;
@@ -33,7 +30,10 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.event.world.WorldSaveEvent;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+
+import tmvkrpxl0.Config.BattleInfo;
 
 public class listener implements Listener {
 	protected static HashMap<Player, Boolean> choose = new HashMap<Player, Boolean>();
@@ -58,51 +58,73 @@ public class listener implements Listener {
 	
 	@EventHandler
 	public void onPlayerJoin(PlayerJoinEvent event){
-		if(Core.patch && event.getPlayer().hasPermission("minecraft.command.op"))event.getPlayer().sendMessage(ChatColor.RED + "국가 플러그인을 사용할 수 없습니다. 사용하시려면 [/국가 설정 패치]를 사용하세요");
-		event.getPlayer().setScoreboard(Core.sb);
-		event.getPlayer().setHealth(((Damageable)event.getPlayer()).getHealth());
-		Core.injector.addPlayer(event.getPlayer());
+		Player p = event.getPlayer();
+		if(Core.patch && p.hasPermission("minecraft.command.op"))p.sendMessage(ChatColor.RED + "국가 플러그인을 사용할 수 없습니다. 사용하시려면 [/국가 설정 패치]를 사용하세요");
+		p.setScoreboard(Core.sb);
+		p.setHealth(((Damageable)p).getHealth());
+		Core.injector.addPlayer(p);
 	}
 	
 	@EventHandler
 	public void onPlayerLeave(PlayerQuitEvent event) {
-		if(tasks.containsKey(event.getPlayer())) {
-			if(tasks.get(event.getPlayer()).isAlive())tasks.get(event.getPlayer()).interrupt();
-			tasks.remove(event.getPlayer());
+		Player p = event.getPlayer();
+		if(tasks.containsKey(p)) {
+			if(tasks.get(p).isAlive())tasks.get(p).interrupt();
+			tasks.remove(p);
 		}
-		Core.injector.removePlayer(event.getPlayer());
+		Core.injector.removePlayer(p);
+	}
+	
+	@EventHandler
+	public void onBlockChange(EntityChangeBlockEvent event) {
+		if(blocks.containsKey(event.getBlock().getType())) {
+			if(!event.getEntityType().equals(EntityType.PLAYER)) {
+				event.setCancelled(true);
+			}
+		}
 	}
 	
 	@EventHandler
 	public void onBlockDamage(BlockDamageEvent event) {
-		String nation = TeamManager.getNation(event.getPlayer().getName());
-		if(TerritoryManager.isInRegion(event.getBlock().getLocation())!=null) {
+		String from = TeamManager.getNation(event.getPlayer());
+		String owner = TerritoryManager.isInRegion(from, event.getBlock().getLocation());
+		if(owner!=null) {
 			Player p = event.getPlayer();
-			if(nation == null) {
-				p.sendMessage("이 블럭은 " + TerritoryManager.isInRegion(event.getBlock().getLocation()) + "국가의 소유입니다!");
-				if(tasks.containsKey(p)) {
-					tasks.get(p).interrupt();
-					tasks.remove(p);
-				}
-				event.setCancelled(true);
-			}else {
-				if(!nation.equals(TerritoryManager.isInRegion(event.getBlock().getLocation()))) {
-					if(!(BattleManager.warWithWho(nation)!=null && (BattleManager.getOpponent(nation)).equals(TerritoryManager.isInRegion(event.getBlock().getLocation())))) {
-						p.sendMessage("이 블럭은 " + TerritoryManager.isInRegion(event.getBlock().getLocation()) + "국가의 소유입니다!");
+			if(!owner.equals(from)) {
+				BattleInfo info = BattleManager.warWithWho(from);
+				if(blocks.containsKey(event.getBlock().getType())) {
+					if(info==null || info.getReadyTime()!= 0 || !(info.getStarter().equals(owner) || info.getVictim().equals(owner))) {
+						p.sendMessage("이 블럭은 " + owner + " 국가의 소유입니다!");
 						event.setCancelled(true);
 						if(tasks.containsKey(p)) {
+							new BukkitRunnable() {
+								 public void run() {
+									 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+									 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
+								 }
+							 }.runTask(Core.plugin);
 							tasks.get(p).interrupt();
 							tasks.remove(p);
 						}
 					}
-				}else if(event.getBlock().getType().equals(Material.BEACON)) {
-					p.sendMessage("아군 신호기는 부술 수 없습니다!");
-					if(tasks.containsKey(p)) {
-						tasks.get(p).interrupt();
-						tasks.remove(p);
-					}
+				}else {
+					if(info==null || info.getReadyTime()!=0 || !(info.getStarter().equals(owner) || info.getVictim().equals(owner)))
+						p.sendMessage("이 블럭은 " + owner + " 국가의 소유입니다!");
 					event.setCancelled(true);
 				}
+			}else if(event.getBlock().getType().equals(Material.BEACON)){
+				p.sendMessage("아군 신호기는 부술 수 없습니다!");
+				if(tasks.containsKey(p)) {
+					new BukkitRunnable() {
+						 public void run() {
+							 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+							 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
+						 }
+					 }.runTask(Core.plugin);
+					tasks.get(p).interrupt();
+					tasks.remove(p);
+				}
+				event.setCancelled(true);
 			}
 		}
 	}
@@ -111,29 +133,34 @@ public class listener implements Listener {
 	
 	@EventHandler
 	public void onBlockBreak(BlockBreakEvent event){
-		String nation = TeamManager.getNation(event.getPlayer().getName());
-		if(TerritoryManager.isInRegion(event.getBlock().getLocation())!=null) {
-			if(nation == null) {
-				event.getPlayer().sendMessage("이 블럭은 " + TerritoryManager.isInRegion(event.getBlock().getLocation()) + "국가의 소유입니다!");
+		String owner = TerritoryManager.isInRegion(TeamManager.getNation(event.getPlayer()), event.getBlock().getLocation());
+		if(owner!=null) {
+			Player p = event.getPlayer();
+			if(!owner.equals(TeamManager.getNation(p))) {
+				BattleInfo info = BattleManager.warWithWho(TeamManager.getNation(event.getPlayer()));
+				if(info==null || !(info.getStarter().equals(owner) || info.getVictim().equals(owner)) || info.getReadyTime()>0)
+					p.sendMessage("이 블럭은 " + owner + " 국가의 소유입니다!");
 				event.setCancelled(true);
-			}else{
-				if(!nation.equals(TerritoryManager.isInRegion(event.getBlock().getLocation()))) {
-					if(!(BattleManager.warWithWho(nation)!=null && BattleManager.getOpponent(nation)
-							.equals(TerritoryManager.isInRegion(event.getBlock().getLocation())))) {
-						event.getPlayer().sendMessage("이 블럭은 " + TerritoryManager.isInRegion(event.getBlock().getLocation()) + "국가의 소유입니다!");
-					}else {
-						if(event.getBlock().getType().equals(Material.IRON_DOOR)) {
-							event.setCancelled(true);
-						}
-						if(event.getBlock().getType().equals(Material.BEACON)) {
-							TerritoryManager.deleteRegion(event.getBlock().getLocation());
-						}
-					}
-				}else if(event.getBlock().getType().equals(Material.BEACON)) {
-					event.getPlayer().sendMessage("아군 신호기는 부술 수 없습니다!");
-					event.setCancelled(true);
+			}else if(event.getBlock().getType().equals(Material.BEACON)) {
+				event.getPlayer().sendMessage("아군 신호기는 부술 수 없습니다!");
+				if(tasks.containsKey(event.getPlayer())) {
+					tasks.remove(event.getPlayer()).interrupt();
+					new BukkitRunnable() {
+						 public void run() {
+							 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+							 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
+						 }
+					 }.runTask(Core.plugin);
 				}
+				event.setCancelled(true);
 			}
+		}else if(blocks.containsKey(event.getBlock().getType())){
+			new BukkitRunnable() {
+				 public void run() {
+					 event.getPlayer().removePotionEffect(PotionEffectType.SLOW_DIGGING);
+					 event.getPlayer().removePotionEffect(PotionEffectType.FAST_DIGGING);
+				 }
+			 }.runTask(Core.plugin);
 		}
 	}
 
@@ -143,106 +170,102 @@ public class listener implements Listener {
 	}
 
 	@EventHandler
-	public void onPistonRetract(BlockPistonRetractEvent event) {
-		if (TerritoryManager.isInRegion(event.getRetractLocation()) != null) {
-			event.setCancelled(true);
-		}
-	}
-
-	@EventHandler
-	public void onPistonPush(BlockPistonExtendEvent event) {
-		for(Block b : event.getBlocks()){
-			if(TerritoryManager.isInRegion(b.getLocation())!=null){
-				event.setCancelled(true);
-			}
-		}
-	}
-
-	@EventHandler
 	public void onProjectileHit(PlayerTeleportEvent event){
 		if(event.getCause() == TeleportCause.ENDER_PEARL && 
-			TerritoryManager.isInRegion(event.getTo())!=null &&
-			TeamManager.getNation(event.getPlayer().getName())!=TerritoryManager.isInRegion(event.getTo())){
-				event.setCancelled(false);
+			TerritoryManager.isInRegion(TeamManager.getNation(event.getPlayer()), event.getTo())!=null &&
+			!TeamManager.getNation(event.getPlayer()).equals(TerritoryManager.isInRegion(
+					TeamManager.getNation(event.getPlayer()), event.getTo()))){
+				event.setCancelled(true);
 				event.getPlayer().sendMessage("불가능합니다!");
 			}
 	}
 	
 	@EventHandler
 	public void onChat(AsyncPlayerChatEvent event){
-		if(choose.containsKey(event.getPlayer()) && choose.get(event.getPlayer())) {
-			if(event.getMessage().equals(TeamManager.getNation(event.getPlayer().getName()))) {
-				event.getPlayer().sendMessage("당신의 국가에 전쟁을 선포할 수 없습니다!");
+		Player p = event.getPlayer();
+		if(choose.containsKey(p) && choose.get(p)) {
+			int result = BattleManager.declare(TeamManager.getNation(p), event.getMessage());
+			switch(result) {
+			case 1:
+				p.sendMessage(event.getMessage() + " 국가는 이미 전쟁중입니다!");
+				break;
+			case 2:
+				p.sendMessage("전쟁중에 다른 국가에 전쟁을 선포할 수 없습니다!");
+				break;
+			case 3:
+				p.sendMessage(event.getMessage() + " 국가를 찾을 수 없습니다!");
+				break;
 			}
-			else if(TeamManager.getTeamList().contains(event.getMessage())) {
-				if(event.getPlayer().getInventory().contains(Core.declarepaper)) {
-				BattleManager.declare(TeamManager.getNation(event.getPlayer().getName()), event.getMessage());
-				event.getPlayer().getInventory().remove(Core.declarepaper);
-				}else event.getPlayer().sendMessage("전쟁 선포권이 없습니다!");
-			}
-			else event.getPlayer().sendMessage(event.getMessage() + "라는 국가가 존재하지 않습니다!");
-			choose.remove(event.getPlayer());
+			choose.remove(p);
 			event.setCancelled(true);
 		}
 	}
 	
+	@SuppressWarnings("deprecation")
 	@EventHandler
 	public void onPlayerInteract(PlayerInteractEvent event) {
+		Player p = event.getPlayer();
 		if(event.getAction().equals(Action.RIGHT_CLICK_BLOCK)) {
-			if(event.getClickedBlock().getType().equals(Material.BEACON)) {
-				if(TerritoryManager.getnationofBeacon(event.getClickedBlock().getLocation())!=null &&
-					TerritoryManager.getnationofBeacon(event.getClickedBlock().getLocation()).equals(TeamManager.getNation(event.getPlayer().getName()))) {
+			String owner = TerritoryManager.isInRegion(TeamManager.getNation(p), event.getClickedBlock().getLocation());
+			if(owner!=null) {
+				if(!owner.equals(TeamManager.getNation(p))) {
+					p.sendMessage("이 블럭은 " + owner + " 국가의 소유입니다!");
 					event.setCancelled(true);
-					event.getPlayer().openInventory(TerritoryManager.openBeacon(event.getClickedBlock().getLocation()));
-					beacon.put(event.getPlayer(), true);
+					return;
+				}else if(event.getClickedBlock().getType().equals(Material.BEACON)){
+					event.setCancelled(true);
+					p.openInventory(TerritoryManager.openBeacon(event.getClickedBlock().getLocation()));
+					beacon.put(p, true);
+					return;
 				}
 			}
 		}
 		if(event.getAction().equals(Action.RIGHT_CLICK_AIR) || event.getAction().equals(Action.RIGHT_CLICK_BLOCK)) {
-			if(event.getPlayer().getItemInHand().isSimilar(Core.defendpaper))event.getPlayer().performCommand("국가 전쟁방어");
-			if(event.getPlayer().getItemInHand().isSimilar(Core.declarepaper))event.getPlayer().performCommand("국가 전쟁선포");
+			if(p.getItemInHand().isSimilar(Core.defendpaper))p.performCommand("국가 전쟁방어");
+			if(p.getItemInHand().isSimilar(Core.declarepaper))p.performCommand("국가 전쟁선포");
 		}
 	}
 	
 	@EventHandler
 	public void onBlockPlace(BlockPlaceEvent event) {
-		if(event.getBlock().getType().equals(Material.BEACON)) {
-			if(TeamManager.getNation(event.getPlayer().getName())!=null) {
-				if(!event.getItemInHand().getItemMeta().hasDisplayName()) {
-					event.getPlayer().sendMessage("도대체 이런일이 어떻게 벌어진건지 모르겠지만, 당신은 허용되지 않은 신호기를 들고 있습니다.");
-					event.setCancelled(true);
-				}
-				else {
-					if(TerritoryManager.getRegionNumber(TeamManager.getNation(event.getPlayer().getName()))>=5) {
-						event.getPlayer().sendMessage("당신의 국가는 너무 많은 신호기를 가지고 있습니다!");
+		boolean isBeacon = event.getBlock().getType().equals(Material.BEACON);
+		String from = TeamManager.getNation(event.getPlayer());
+		String owner = TerritoryManager.isInRegion(from, event.getBlock().getLocation());
+		if(owner==null) {
+			Player p = event.getPlayer();
+			if(isBeacon) {
+				if(from!=null) {
+					if(event.getItemInHand().getItemMeta().hasDisplayName()) {
+						if(TerritoryManager.getRegionNumber(from)<=5) {
+							String nation = TerritoryManager.registerRegion(from, event.getBlock().getLocation(), 
+								event.getItemInHand().getItemMeta().getDisplayName());
+							if(nation!=null) {
+								if(from.equals(nation)) {
+									p.sendMessage(nation + "국가와 너무 가깝습니다! 더 멀리가세요!");
+								}else p.sendMessage("당신의 다른 영지와 너무 가깝습니다!");
+							}else return;
+						}else p.sendMessage("당신의 국가는 너무 많은 신호기를 가지고 있습니다!");
+					}else p.sendMessage(ChatColor.RED + "도대체 이런일이 어떻게 벌어진건지 모르겠지만, 당신은 허용되지 않은 신호기를 들고 있습니다.");
 						event.setCancelled(true);
-					}else {
-				String nation = TerritoryManager.registerRegion(TeamManager.getNation(event.getPlayer().getName()), event.getBlock().getLocation(),
-						event.getItemInHand().getItemMeta().getDisplayName());
-					if(nation!=null) {
-						if(TeamManager.getNation(event.getPlayer().getName()).equals(nation)) {
-							event.getPlayer().sendMessage("당신의 다른 영지와 너무 가깝습니다!");
-							event.setCancelled(true);
-						}else {
-							event.getPlayer().sendMessage("이 지역은 " + nation + "국가의 땅입니다!");
-							event.setCancelled(true);
-						}
-					}
-				}
-			}
 				}else {
-					event.getPlayer().sendMessage("국가에 있어야만 사용가능합니다!");
+					p.sendMessage("국가에 소속되어 있어야 합니다!");
 					event.setCancelled(true);
 				}
 			}
+		}else if(!owner.equals(from)) {
+					event.getPlayer().sendMessage(owner + "국의 영토 안에서는 블럭을 설치할 수 없습니다!");
+					event.setCancelled(true);
+				}else if(isBeacon) {
+					event.getPlayer().sendMessage("당신의 다른 영지와 너무 가깝습니다!");
+					event.setCancelled(true);
 		}
+	}
 	
 	@EventHandler
 	public void onEntityDamage(EntityDamageEvent event) {
 		if(event.getCause().equals(DamageCause.ENTITY_EXPLOSION) || event.getCause().equals(DamageCause.BLOCK_EXPLOSION)) 
 			event.setCancelled(true);
 		}
-	
 	@EventHandler
 	public void onInventoryClick(InventoryClickEvent event){
 		if(beacon.containsKey(event.getWhoClicked())) {
@@ -287,9 +310,9 @@ public class listener implements Listener {
 	protected static void changeHardness(Material material, double hardness) {
 		blocks.put(material, hardness);
 		try {
-			Field st = Reflection.getField(Reflection.getClass("{nms}.Block"), "strength");
+			java.lang.reflect.Field st = Reflection.getField(Reflection.getClass("{nms}.Block"), "strength");
 			st.setAccessible(true);
-			Method magic = Reflection.getClass("{cb}.util.CraftMagicNumbers").getMethod("getBlock", Material.class);
+			java.lang.reflect.Method magic = Reflection.getClass("{cb}.util.CraftMagicNumbers").getMethod("getBlock", Material.class);
 			magic.setAccessible(true);
 			st.set(magic.invoke(null, material), 2000F);
 		} catch (Exception e) {

@@ -6,9 +6,7 @@ and I didn't make this class
 */
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collection;
 import java.util.List;
 
 import org.bukkit.Bukkit;
@@ -22,12 +20,6 @@ public class Reflection {
 	     String path = classname.replace("{nms}", "net.minecraft.server."+version)
 	          .replace("{nm}", "net.minecraft."+version)
 	      .replace("{cb}", "org.bukkit.craftbukkit."+version);
-	    	 try {
-	    		 Class.forName("net.minecraft.util.io.netty.channel.Channel");
-	    		 path = path.replace("{netty}", "net.minecraft.util.io.netty.channel");
-	    	 }catch(ClassNotFoundException e) {
-	    		 path = path.replace("{netty}", "io.netty.channel");
-	    	 }
 	     return Class.forName(path);
 	    } catch (Throwable t) {
 	      t.printStackTrace();
@@ -78,31 +70,12 @@ public class Reflection {
 	     }
 	   }
 	public static void sendAllPacket(Object packet) throws Exception {
-		   try {
-				Method onlines = Bukkit.getServer().getClass().getMethod("getOnlinePlayers");
-				onlines.setAccessible(true);
-				if(onlines.getClass().isArray()) {
-					Player [] pa = (Player[]) onlines.invoke(Bukkit.getServer());
-					for(Player p : pa) {
-							  Object nmsPlayer = getNmsPlayer(p);
-							  Object connection = nmsPlayer.getClass().getField("playerConnection").get(nmsPlayer);
-							  connection.getClass().getMethod("sendPacket", Reflection.getClass("{nms}.Packet")).invoke(connection, packet);
-					}
-				}else {
-					@SuppressWarnings("unchecked")
-					Collection<Player> pc = (Collection<Player>) onlines.invoke(Bukkit.getServer());
-					for(Player p : pc) {
-							  Object nmsPlayer = getNmsPlayer(p);
-							  Object connection = nmsPlayer.getClass().getField("playerConnection").get(nmsPlayer);
-							  connection.getClass().getMethod("sendPacket", Reflection.getClass("{nms}.Packet")).invoke(connection, packet);
-					}
-				}
-			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-	   
-	     }
+		for(Player p : Core.getOnlinePlayers()) {
+				  Object nmsPlayer = getNmsPlayer(p);
+				  Object connection = nmsPlayer.getClass().getField("playerConnection").get(nmsPlayer);
+				  connection.getClass().getMethod("sendPacket", Reflection.getClass("{nms}.Packet")).invoke(connection, packet);
+		}
+	}
 	   public static void sendListPacket(List<String> players, Object packet) {
 	    try {
 	     for (String name : players) {

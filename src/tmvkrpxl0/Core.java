@@ -14,6 +14,7 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 
@@ -37,8 +38,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature;
 
-import tmvkrpxl0.Config.CustomConfig;
-
 public class Core extends JavaPlugin {
 	protected static Plugin plugin;
 	protected static ConsoleCommandSender sender;
@@ -46,17 +45,17 @@ public class Core extends JavaPlugin {
 	private static BattleManager battlemanager;
 	protected static PluginDescriptionFile pdFile;
 	private static TerritoryManager territorymanager;
+	private static PermissionManager permissionmanager;
 	protected static String prefix;
 	protected static Scoreboard sb;
 	protected static Objective obj;
-	protected static PacketInjector injector;
+	protected static PacketInjectorInterface injector;
 	protected static ItemStack declarepaper;
 	protected static ItemStack defendpaper;
-	protected static boolean hologram;
-	protected static CustomConfig Config = null;
+	protected static Plugin hologram = null;
+	protected static tmvkrpxl0.Config.CustomConfig Config = null;
 	protected static boolean patch = false;
 	protected static Thread patcher = null;
-	
 	@Override
 	public void onEnable() {
 		prefix = ChatColor.GOLD + "[" + ChatColor.WHITE + "국가" + ChatColor.GOLD + "]" + ChatColor.RESET;//[국가]
@@ -92,54 +91,43 @@ public class Core extends JavaPlugin {
 			sender.sendMessage(ChatColor.DARK_RED + "주의: 위 명령어를 사용하면 서버가 종료됩니다. 데이터는 저장이 될것이지만, 국가 플러그인은 저장이 되지 않을 수 있습니다.");
 			sender.sendMessage(ChatColor.DARK_RED + "최대한 빨리 위 명령어를 사용하시기를 바랍니다. 그렇지 않으면 모든 국가, 영토, 전쟁 정보가 저장 되지 않을 수 있습니다.");
 			patch = true;
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e1) {
+			}
 		}
 		getCommand("국가").setExecutor(new Command());
 		getCommand("국가").setTabCompleter(new TabComplete());
 		if(!patch) {
-		Config = (CustomConfig) loadFile("config.yml", CustomConfig.class);
+		Config = (tmvkrpxl0.Config.CustomConfig) loadFile("config.yml", tmvkrpxl0.Config.CustomConfig.class);
+		permissionmanager = new PermissionManager();
 		teammanager = new TeamManager();//팀매니저
-		territorymanager = new TerritoryManager();
 		battlemanager = new BattleManager();
 		sender.sendMessage("####################################");
 		sender.sendMessage(ChatColor.DARK_PURPLE + "[tmvkrpxl0]국가 전쟁 플러그인을 실행합니다..");
 		sender.sendMessage("[" + pdFile.getFullName() + ": " + pdFile.getDescription() + "]");
 		sender.sendMessage("####################################");
-		injector = new PacketInjector();
+		try {
+			Class.forName("net.minecraft.util.io.netty.channel.Channel");
+			injector = new PacketInjector();
+		}catch(ClassNotFoundException e) {
+			injector = new PacketInjectorNew();
+		}
 		declarepaper = loadItem("전쟁선포권.json");
 		defendpaper = loadItem("국가방어권.json");
-		sender.sendMessage("주의! OP권한이 있으면 이 플러그인의 권한 시스템이 작동하지 않게 됩니다!");
-		sender.sendMessage("주의! OP권한이 있으면 이 플러그인의 권한 시스템이 작동하지 않게 됩니다!");
-		sender.sendMessage("만약 당신이 이 서버에서 플레이를 하게 된다면, 무조건 OP를 해제하세요!");
-		sender.sendMessage("만약 당신이 이 서버에서 플레이를 하게 된다면, 무조건 OP를 해제하세요!");
-		sender.sendMessage("타 권한 플러그인와 같이 사용해야만 합니다!");
-		sender.sendMessage("타 권한 플러그인와 같이 사용해야만 합니다!");
-		sender.sendMessage("2번 나오는거 중요해서 2번알려주는겁니다!");
-		hologram = Bukkit.getPluginManager().isPluginEnabled("HolographicDisplays");
-		if(hologram) {
+		if(Bukkit.getPluginManager().isPluginEnabled("HolographicDisplays")) {
 			sender.sendMessage("Holographic Displays가 활성화 되어있으니, 홀로그램 기능을 킵니다..");
 			sender.sendMessage("신호기 위에 신호기 이름이 표시될 것입니다");
+			hologram = Bukkit.getPluginManager().getPlugin("HolographicDisplays");
 		}else {
 			sender.sendMessage("Holographic Displays가 비활성화 되어있으니, 홀로그램 기능을 끕니다..");
 			sender.sendMessage("신호기 위에 이름이 표시되지 않습니다");
 		}
-		try {
-			Method onlines = Bukkit.getServer().getClass().getMethod("getOnlinePlayers");
-			onlines.setAccessible(true);
-			if(onlines.invoke(Bukkit.getServer()).getClass().isArray()) {
-				Player [] pa = (Player[]) onlines.invoke(Bukkit.getServer());
-				for(Player p : pa) {
-					injector.addPlayer(p);
-				}
-			}else {
-				@SuppressWarnings("unchecked")
-				Collection<Player> pc = (Collection<Player>) onlines.invoke(Bukkit.getServer());
-				for(Player p : pc) {
-					injector.addPlayer(p);
-				}
-			}
-		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-			e.printStackTrace();
+		for(Player p : getOnlinePlayers()) {
+			injector.addPlayer(p);
 		}
+		territorymanager = new TerritoryManager();
+		//밑에 3개말고 더 넣지 마셈
 		listener.changeHardness(Material.IRON_DOOR, Config.getTerritory().get("ironDoorBreakTime"));
 		listener.changeHardness(Material.IRON_DOOR_BLOCK, Config.getTerritory().get("ironDoorBreakTime"));
 		listener.changeHardness(Material.BEACON, Config.getTerritory().get("beaconBreakTime"));
@@ -151,6 +139,7 @@ public class Core extends JavaPlugin {
 		teammanager.save();
 		battlemanager.save();
 		territorymanager.save();
+		permissionmanager.save();
 		broadcast("국가 정보들이 저장되었습니다!");
 	}
 	
@@ -159,26 +148,11 @@ public class Core extends JavaPlugin {
 	@Override
 	public void onDisable() {
 		super.onDisable();
+		for(Player p : getOnlinePlayers()) {
+			injector.removePlayer(p);
+		}
 		if(patcher!=null)patcher.interrupt();
 		if(!patch) {
-		try {
-			Method onlines = Bukkit.getServer().getClass().getMethod("getOnlinePlayers");
-			onlines.setAccessible(true);
-			if(onlines.invoke(Bukkit.getServer()).getClass().isArray()) {
-				Player [] pa = (Player[]) onlines.invoke(Bukkit.getServer());
-				for(Player p : pa) {
-					injector.removePlayer(p);
-				}
-			}else {
-				@SuppressWarnings("unchecked")
-				Collection<Player> pc = (Collection<Player>) onlines.invoke(Bukkit.getServer());
-				for(Player p : pc) {
-					injector.removePlayer(p);
-				}
-			}
-		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-			e.printStackTrace();
-		}
 		save();
 		File f = new File(plugin.getDataFolder() + File.separator + "config.yml");
 		if(!f.exists()) {
@@ -288,7 +262,6 @@ public class Core extends JavaPlugin {
 			//ItemStack stack = new ItemStack(Material.DIAMOND, 3);
 			ItemStack stack = (ItemStack) Class.forName(cl).getConstructor(Material.class, int.class).newInstance(Material.valueOf(type), 1);
 			ItemMeta imeta = stack.getItemMeta();
-			Core.broadcast((String) meta.get("display-name"));
 			imeta.setDisplayName((String) meta.get("display-name"));
 			imeta.setLore((ArrayList<String>)meta.get("lore"));
 			stack.setItemMeta(imeta);
@@ -298,6 +271,23 @@ public class Core extends JavaPlugin {
 			}catch(Exception e) {
 				e.printStackTrace();
 			}
+		return null;
+	}
+	
+	@SuppressWarnings("unchecked")
+	protected static Collection<? extends Player> getOnlinePlayers() {
+		try {
+			Method onlines = Bukkit.getServer().getClass().getMethod("getOnlinePlayers");
+			onlines.setAccessible(true);
+			Object obj = onlines.invoke(Bukkit.getServer());
+			if(obj.getClass().isArray()) {
+				return Arrays.asList((Player[])obj);
+			}else {
+				return (Collection<? extends Player>) obj;
+			}
+		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			e.printStackTrace();
+		}
 		return null;
 	}
 }

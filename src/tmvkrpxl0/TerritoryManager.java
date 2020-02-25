@@ -19,24 +19,44 @@ import tmvkrpxl0.Config.TerritoryConfig;
 
 class TerritoryManager {
     private static Map<String, List<BeaconInfo>> locations;
-    protected static int minDistance;
-    protected static int minDistanceFriendly;
-
     
 	protected TerritoryManager(){
     	locations = ((TerritoryConfig)Core.loadFile("영토.yml", TerritoryConfig.class)).getLocations();
-		minDistance = Core.Config.getTerritory().get("minDistance");
-		minDistanceFriendly = Core.Config.getTerritory().get("minDistanceFriendly");
+		if(Core.hologram!=null) {
+			LinkedList<BeaconInfo> templ = new LinkedList<>();
+			for(String s : locations.keySet()) {
+				for(BeaconInfo l : locations.get(s)) {
+					templ.add(l);
+				}
+			}
+			for(com.gmail.filoghost.holograms.api.Hologram hologram : com.gmail.filoghost.holograms.api.HolographicDisplaysAPI.getHolograms(Core.hologram)) {
+				Iterator<BeaconInfo> itr = templ.iterator();
+				while(itr.hasNext()) {
+					BeaconInfo info = itr.next();
+					int [] beaconloc = info.getBeaconLocation();
+					if(new Location(Bukkit.getWorlds().get(0), beaconloc[0]+0.5, beaconloc[1]+1.5, 
+							beaconloc[2]+0.5)
+							.equals(hologram.getLocation()))itr.remove();
+				}
+			}
+			for(BeaconInfo info : templ) {
+				int [] beaconloc = info.getBeaconLocation();
+				com.gmail.filoghost.holograms.database.HologramDatabase.saveHologram((com.gmail.filoghost.holograms.object.CraftHologram)
+						com.gmail.filoghost.holograms.api.HolographicDisplaysAPI.createHologram(Core.hologram, new Location(Bukkit.getWorlds()
+								.get(0), beaconloc[0]+0.5, beaconloc[1]+1.5, beaconloc[2]+0.5), info.getBeaconName()));
+				com.gmail.filoghost.holograms.database.HologramDatabase.trySaveToDisk();
+			}
+		}
     }
     
 	protected static String registerRegion(String nation, Location yloc, String name){
 		int [] placed = new int[] {yloc.getBlockX(), yloc.getBlockZ()};
 		int [][] placededge = getEdges(placed);
 		String r;
-		r = isInRegion(placed);
+		r = isInRegion(nation, placed);
 		if(r!=null)return r;
 		for(int [] i : placededge) {
-			r = isInRegion(i);
+			r = isInRegion(nation, i);
 			if(r != null)return r;
 		}
     	BeaconInfo newbeacon = new BeaconInfo();
@@ -45,6 +65,11 @@ class TerritoryManager {
     	newbeacon.setRegionEdges(getEdges(placed));
     	if(!locations.containsKey(nation))locations.put(nation, new LinkedList<BeaconInfo>());
     	locations.get(nation).add(newbeacon);
+    	if(Core.hologram!=null) {
+    		com.gmail.filoghost.holograms.database.HologramDatabase.saveHologram((com.gmail.filoghost.holograms.object.CraftHologram) 
+    				com.gmail.filoghost.holograms.api.HolographicDisplaysAPI.createHologram(Core.hologram, yloc.add(0.5, 1.5, 0.5), name));
+    		com.gmail.filoghost.holograms.database.HologramDatabase.trySaveToDisk();
+    	}
         return null;
     }
 
@@ -57,34 +82,30 @@ class TerritoryManager {
     		new int[] {centor[0]+25, centor[1]-24}};
     }
     
-    protected static String isInRegion(Location loc) {
-    	return isInRegion(new int [] {loc.getBlockX(), loc.getBlockZ()});
+    protected static String isInRegion(String nation, Location loc) {
+    	return isInRegion(nation, new int [] {loc.getBlockX(), loc.getBlockZ()});
     }
     
-	protected static String isInRegion(int [] li){
+	protected static String isInRegion(String nation, int [] li){
     	for(String s : locations.keySet()) {
     		for(BeaconInfo lo : locations.get(s)) {
     			int [] tl = new int[] {lo.getBeaconLocation()[0], lo.getBeaconLocation()[2]};
-    			if(getDistance(li, tl)<=minDistance)return s;
+    			if(getDistance(li, tl)<=(s.equals(nation)?Core.Config.getTerritory().get("minDistanceFriendly"):
+    				Core.Config.getTerritory().get("minDistance")))return s;
     			for(int [] edges: lo.getRegionEdges()) {
-    				if(getDistance(li, edges)<=minDistance)return s;
+    				if(getDistance(li, edges)<=(s.equals(nation)?Core.Config.getTerritory().get("minDistanceFriendly"):
+    						Core.Config.getTerritory().get("minDistance")))return s;
     			}
     		}
     	}
     	return null;
     }
-    
-    protected static void deleteNation(String nation) {
-    	locations.remove(nation);
-    	Core.broadcast(nation + ChatColor.RED + ChatColor.BOLD + "국가가 멸망했습니다!");
-    }
-    
-    
 	protected static void deleteRegion(Location loc){
     	int [] temp = new int[] {loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()};
     	for(String s : locations.keySet()) {
     		for(BeaconInfo lo : locations.get(s)) {
     			if(Arrays.equals(lo.getBeaconLocation(), temp)) {
+    				
     				locations.get(s).remove(lo);
     				for(String p : TeamManager.getTeam(s)) {
     					Bukkit.getPlayerExact(p).sendMessage(ChatColor.RED + "성 " + lo.getBeaconName() + "이(가) 파괴되었습니다!");
@@ -92,12 +113,27 @@ class TerritoryManager {
     				for(String p : TeamManager.getTeam(BattleManager.getOpponent(s))) {
     					Bukkit.getPlayerExact(p).sendMessage(ChatColor.GREEN + "상대 국가의 성이 파괴되었습니다!");
     				}
-    				if(getRegionNumber(s)==0)TeamManager.deleteTeam(s);
+    				if(getRegionNumber(s)==0) {
+    					TeamManager.deleteTeam(s);
+    					locations.remove(s);
+    			    	Core.broadcast(s + ChatColor.RED + ChatColor.BOLD + "국가가 멸망했습니다!");
+    				}
     				return;
     			}
     		}
     	}
+    	if(Core.hologram!=null) {
+    		for(com.gmail.filoghost.holograms.api.Hologram h : com.gmail.filoghost.holograms.api.HolographicDisplaysAPI.getHolograms(Core.hologram)) {
+    			Core.broadcast(h.getLocation().toString());
+    			if(h.getLocation().equals(loc.add(0, 1, 0)))h.delete();
+    		}
+    	}
     }
+	
+	protected static void deleteNation(String nation) {
+		locations.remove(nation);
+	}
+	
     protected static double getDistance(int [] p1, int [] p2) {
     	return Math.sqrt((p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]));
     }

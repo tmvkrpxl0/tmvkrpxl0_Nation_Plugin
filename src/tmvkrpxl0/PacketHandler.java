@@ -1,6 +1,7 @@
 package tmvkrpxl0;
 
 import org.bukkit.Effect;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -70,9 +71,17 @@ public class PacketHandler extends ChannelDuplexHandler {
 										new BukkitRunnable() {
 											public void run() {
 												try {
-													p.getWorld().getBlockAt(x, y, z).breakNaturally();
+													new BukkitRunnable() {
+														 public void run() {
+															 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+															 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
+														 }
+													 }.runTask(Core.plugin);
+													org.bukkit.block.Block block = p.getWorld().getBlockAt(x, y, z);
+													if(block.getType().equals(Material.BEACON))TerritoryManager.deleteRegion(block.getLocation());
+													block.breakNaturally();
 													p.getWorld().spigot().playEffect(p.getLocation(), Effect.STEP_SOUND);
-													Reflection.sendPlayerPacket(p, Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
+													Reflection.sendAllPacket(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
 															.getConstructor(int.class, int.class, int.class, int.class, int.class).newInstance(p.getUniqueId().hashCode(), x, y, z, -1));
 												} catch (Exception e) {
 													// TODO Auto-generated catch block

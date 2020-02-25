@@ -3,18 +3,18 @@ package tmvkrpxl0.Config;
 public class BattleInfo {
 	private String Starter;
 	private String Victim;
-	private int Time;
-	private boolean ready;
+	private int ReadyTime;
+	private int WarTime;
 	public BattleInfo() {
-		Time=0;
-		ready=true;
+		ReadyTime=0;
+		WarTime=0;
 	}
 	
-	public BattleInfo(String s, String v, int t, boolean r) {
+	public BattleInfo(String s, String v, int rt, int wt) {
 		Starter = s;
 		Victim = v;
-		Time=t;
-		ready = r;
+		ReadyTime= rt;
+		WarTime = wt;
 	}
 	
 	public String getStarter() {
@@ -32,19 +32,19 @@ public class BattleInfo {
 	public void setVictim(String v) {
 		Victim = v;
 	}
-	public int getTime() {
-		return Time;
+	public int getReadyTime() {
+		return ReadyTime;
 	}
 	
-	public void setTime(int t) {
-		Time=t;
+	public void setReadyTime(int t) {
+		ReadyTime=t;
 	}
 	
-	public void setReady(boolean r) {
-		ready = r;
+	public int getWarTime() {
+		return WarTime;
 	}
 	
-	public boolean getReady() {
-		return ready;
+	public void setWarTime(int wt) {
+		WarTime = wt;
 	}
 }
