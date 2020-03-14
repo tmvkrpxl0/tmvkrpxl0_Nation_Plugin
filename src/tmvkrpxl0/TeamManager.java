@@ -14,15 +14,15 @@ import org.bukkit.entity.Player;
 public class TeamManager {
 	private static Map<String, List<UUID>> team;
 	protected static LinkedHashMap<UUID, String> invites;
-	ConsoleCommandSender sender = Core.sender;
+	ConsoleCommandSender sender = KukgaMain.sender;
 	protected TeamManager(){
 		//여기서 팀 정보를 불러오기도 합니다
-		team = ((tmvkrpxl0.Config.TeamConfig)Core.loadFile("팀.yml", tmvkrpxl0.Config.TeamConfig.class)).getTeams();
+		team = ((tmvkrpxl0.Config.TeamConfig)KukgaMain.loadFile("팀.yml", tmvkrpxl0.Config.TeamConfig.class)).getTeams();
 		invites = new LinkedHashMap<UUID, String>();
 	}
 	
 	protected void save(){
-		Core.saveFile("팀.yml", tmvkrpxl0.Config.TeamConfig.class, new tmvkrpxl0.Config.TeamConfig(team));
+		KukgaMain.saveFile("팀.yml", tmvkrpxl0.Config.TeamConfig.class, new tmvkrpxl0.Config.TeamConfig(team));
 	}
 	
 	protected static String getNation(Player player) {
@@ -42,12 +42,15 @@ public class TeamManager {
 	}
 	
 	protected static void deleteTeam(String nation){
+		deleteTeam(nation, "국가가 멸망했습니다!");
+	}
+	
+	protected static void deleteTeam(String nation, String message) {
 		team.remove(nation);
 		TerritoryManager.deleteNation(nation);
 		BattleManager.remove(nation);
-		Core.broadcast(nation + "국가가 멸망했습니다!");
+		KukgaMain.broadcast(nation + message);
 	}
-	
 	protected static boolean invite(Player player, String nation) {
 		if(invites.containsKey(player.getUniqueId()))return false;
 		invites.put(player.getUniqueId(), nation);
@@ -61,7 +64,7 @@ public class TeamManager {
 					Bukkit.getPlayer(player.getUniqueId()).sendMessage("30초가 지나, 초대를 거절하도록 하겠습니다.");
 				}
 			}
-		}.runTaskLater(Core.plugin, 20 * 30);
+		}.runTaskLater(KukgaMain.plugin, 20 * 30);
 		return true;
 	}
 	

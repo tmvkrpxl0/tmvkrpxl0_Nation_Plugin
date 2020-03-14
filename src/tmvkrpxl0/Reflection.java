@@ -70,7 +70,7 @@ public class Reflection {
 	     }
 	   }
 	public static void sendAllPacket(Object packet) throws Exception {
-		for(Player p : Core.getOnlinePlayers()) {
+		for(Player p : KukgaMain.getOnlinePlayers()) {
 				  Object nmsPlayer = getNmsPlayer(p);
 				  Object connection = nmsPlayer.getClass().getField("playerConnection").get(nmsPlayer);
 				  connection.getClass().getMethod("sendPacket", Reflection.getClass("{nms}.Packet")).invoke(connection, packet);

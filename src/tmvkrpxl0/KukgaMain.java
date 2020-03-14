@@ -35,10 +35,11 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature;
 
-public class Core extends JavaPlugin {
+public class KukgaMain extends JavaPlugin {
 	protected static Plugin plugin;
 	protected static ConsoleCommandSender sender;
 	private static TeamManager teammanager;
@@ -183,7 +184,7 @@ public class Core extends JavaPlugin {
 	}
 	
 	protected static Object loadFile(String filename, Class<?> t) {
-		File f = new File(Core.plugin.getDataFolder() + File.separator + filename);
+		File f = new File(KukgaMain.plugin.getDataFolder() + File.separator + filename);
 		Object re;
 		try {
 			ObjectMapper mapper = new ObjectMapper(new YAMLFactory().disable(Feature.WRITE_DOC_START_MARKER));
@@ -192,15 +193,21 @@ public class Core extends JavaPlugin {
 				f.createNewFile();
 				return t.getConstructor().newInstance();
 			}
-			if(f.length()==0)return t.getConstructor().newInstance();
 			BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(f), "UTF-8"));
 			char [] buffer = new char[1];
 			r.read(buffer);
-			if(((int)buffer[0])!=65279) {
+			if(((int)buffer[0])!='\uFEFF') {
 				r.close();
 				r = new BufferedReader(new InputStreamReader(new FileInputStream(f), "UTF-8"));
 			}
-			re = mapper.readValue(r, t);
+			try {
+				re = mapper.readValue(r, t);
+			}catch(MismatchedInputException e) {
+				KukgaMain.sender.sendMessage(filename + "은 손상된 파일 같습니다. 만약 그렇지 않다면 수동으로 파일 복구를 진행해 주세요"); 
+				f.renameTo(new File(plugin.getDataFolder() + File.separator + filename + "_backup"));
+				new File(plugin.getDataFolder() + File.separator + filename).createNewFile();
+				return t.getConstructor().newInstance();
+			}
 			r.close();
 			return re;
 		} catch (IOException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException | InstantiationException e) {
@@ -208,6 +215,7 @@ public class Core extends JavaPlugin {
 			sender.sendMessage(filename + "을(를) 불러오는데에 실패했습니다!");
 			sender.sendMessage("데이터를 보존하기 위해 플러그인을 비활성화 합니다!");
 			sender.sendMessage("만약 서버 실행중에 플러그인 파일을 대체하여 발생한 문제라면, 서버를 완전히 재시작해 보세요");
+			sender.sendMessage("그렇지 않다면 파일이 손상된 것입니다");
 			Bukkit.getServer().getPluginManager().disablePlugin(plugin);
 		}
 		return null;
@@ -215,7 +223,7 @@ public class Core extends JavaPlugin {
 	
 	protected static void saveFile(String filename, Class<?> t, Object o) {
     	try {
-    		File f = new File(Core.plugin.getDataFolder() + File.separator + filename);
+    		File f = new File(KukgaMain.plugin.getDataFolder() + File.separator + filename);
     		ObjectMapper mapper = new ObjectMapper(new YAMLFactory().disable(Feature.WRITE_DOC_START_MARKER));
     		if(!f.exists()) {
     			f.getParentFile().mkdirs();

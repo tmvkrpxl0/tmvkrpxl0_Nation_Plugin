@@ -1,5 +1,6 @@
 package tmvkrpxl0;
 import java.lang.reflect.Field;
+import java.util.Queue;
 
 import org.bukkit.entity.Player;
 
@@ -18,17 +19,21 @@ public class PacketInjectorNew implements PacketInjectorInterface{
 	private Class<?> NetworkManager;
 	private Field k;
 	private Field m;
-
 	public PacketInjectorNew() {
-	try {
-		EntityPlayer_playerConnection = Reflection.getField(Reflection.getClass("{nms}.EntityPlayer"), "playerConnection");
+		try {
+			EntityPlayer_playerConnection = Reflection.getField(Reflection.getClass("{nms}.EntityPlayer"), "playerConnection");
+			PlayerConnection = Reflection.getClass("{nms}.PlayerConnection");
+			PlayerConnection_networkManager = Reflection.getField(PlayerConnection, "networkManager");
 
-		PlayerConnection = Reflection.getClass("{nms}.PlayerConnection");
-		PlayerConnection_networkManager = Reflection.getField(PlayerConnection, "networkManager");
-
-		NetworkManager = Reflection.getClass("{nms}.NetworkManager");
-		k = Reflection.getField(NetworkManager, "k");
-		m = Reflection.getField(NetworkManager, "m");
+			NetworkManager = Reflection.getClass("{nms}.NetworkManager");
+			boolean access;
+			for(Field f : NetworkManager.getDeclaredFields()) {
+				access = f.isAccessible();
+				f.setAccessible(true);
+				if(f.getType().equals(Queue.class)) k=f;
+				else if(f.getType().equals(Channel.class))m=f;
+				else f.setAccessible(access);
+			}
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}

@@ -41,7 +41,7 @@ public class listener implements Listener {
 	protected static HashMap<Player, Thread> tasks = new HashMap<>();
 	protected static HashMap<Material, Double> blocks = new HashMap<>();
 	
-	protected listener(Core plugin) {
+	protected listener(KukgaMain plugin) {
 		new BukkitRunnable() {
 			public void run() {
 				for(Player p : listener.tasks.keySet()) {
@@ -53,16 +53,16 @@ public class listener implements Listener {
 	
 	@EventHandler
 	public void onSave(WorldSaveEvent event) {
-		Core.save();
+		KukgaMain.save();
 	}
 	
 	@EventHandler
 	public void onPlayerJoin(PlayerJoinEvent event){
 		Player p = event.getPlayer();
-		if(Core.patch && p.hasPermission("minecraft.command.op"))p.sendMessage(ChatColor.RED + "국가 플러그인을 사용할 수 없습니다. 사용하시려면 [/국가 설정 패치]를 사용하세요");
-		p.setScoreboard(Core.sb);
+		if(KukgaMain.patch && p.hasPermission("minecraft.command.op"))p.sendMessage(ChatColor.RED + "국가 플러그인을 사용할 수 없습니다. 사용하시려면 [/국가 설정 패치]를 사용하세요");
+		p.setScoreboard(KukgaMain.sb);
 		p.setHealth(((Damageable)p).getHealth());
-		Core.injector.addPlayer(p);
+		KukgaMain.injector.addPlayer(p);
 	}
 	
 	@EventHandler
@@ -72,7 +72,7 @@ public class listener implements Listener {
 			if(tasks.get(p).isAlive())tasks.get(p).interrupt();
 			tasks.remove(p);
 		}
-		Core.injector.removePlayer(p);
+		KukgaMain.injector.removePlayer(p);
 	}
 	
 	@EventHandler
@@ -102,7 +102,7 @@ public class listener implements Listener {
 									 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
 									 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
 								 }
-							 }.runTask(Core.plugin);
+							 }.runTask(KukgaMain.plugin);
 							tasks.get(p).interrupt();
 							tasks.remove(p);
 						}
@@ -120,7 +120,7 @@ public class listener implements Listener {
 							 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
 							 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
 						 }
-					 }.runTask(Core.plugin);
+					 }.runTask(KukgaMain.plugin);
 					tasks.get(p).interrupt();
 					tasks.remove(p);
 				}
@@ -150,7 +150,7 @@ public class listener implements Listener {
 							 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
 							 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
 						 }
-					 }.runTask(Core.plugin);
+					 }.runTask(KukgaMain.plugin);
 				}
 				event.setCancelled(true);
 			}
@@ -160,7 +160,7 @@ public class listener implements Listener {
 					 event.getPlayer().removePotionEffect(PotionEffectType.SLOW_DIGGING);
 					 event.getPlayer().removePotionEffect(PotionEffectType.FAST_DIGGING);
 				 }
-			 }.runTask(Core.plugin);
+			 }.runTask(KukgaMain.plugin);
 		}
 	}
 
@@ -221,8 +221,8 @@ public class listener implements Listener {
 			}
 		}
 		if(event.getAction().equals(Action.RIGHT_CLICK_AIR) || event.getAction().equals(Action.RIGHT_CLICK_BLOCK)) {
-			if(p.getItemInHand().isSimilar(Core.defendpaper))p.performCommand("국가 전쟁방어");
-			if(p.getItemInHand().isSimilar(Core.declarepaper))p.performCommand("국가 전쟁선포");
+			if(p.getItemInHand().isSimilar(KukgaMain.defendpaper))p.performCommand("국가 전쟁방어");
+			if(p.getItemInHand().isSimilar(KukgaMain.declarepaper))p.performCommand("국가 전쟁선포");
 		}
 	}
 	
@@ -240,9 +240,8 @@ public class listener implements Listener {
 							String nation = TerritoryManager.registerRegion(from, event.getBlock().getLocation(), 
 								event.getItemInHand().getItemMeta().getDisplayName());
 							if(nation!=null) {
-								if(from.equals(nation)) {
-									p.sendMessage(nation + "국가와 너무 가깝습니다! 더 멀리가세요!");
-								}else p.sendMessage("당신의 다른 영지와 너무 가깝습니다!");
+								if(from.equals(nation))p.sendMessage("당신의 다른 영지와 너무 가깝습니다!");
+								else p.sendMessage(nation + "국가와 너무 가깝습니다! 더 멀리가세요!");
 							}else return;
 						}else p.sendMessage("당신의 국가는 너무 많은 신호기를 가지고 있습니다!");
 					}else p.sendMessage(ChatColor.RED + "도대체 이런일이 어떻게 벌어진건지 모르겠지만, 당신은 허용되지 않은 신호기를 들고 있습니다.");
@@ -275,12 +274,10 @@ public class listener implements Listener {
 					//위에꺼 그냥 [이곳] 이라는 이름의 아이템 눌렀는지 확인하는건데 색 들어가 있어서 헤헤..
 					if(event.getCurrentItem().getType().equals(Material.BEACON)) {
 						int [] loc = new int[3];
-						String [] s = event.getCurrentItem().getItemMeta().getLore().get(0).split(":");
-						String[] ss = new String[]{s[1], s[2], s[3]};
-						for(int i = 0;i<3;i++) {
-							String d =  ss[i].replaceAll("[§abcdefghijklmnopqrstuvwxyz ]", "").replace("[", "").replace("]", "");//아아아앙 몰라 그냥 알파벳 다없엘꺼야
-							loc[i] = Integer.parseInt(d);
-						}
+						String lore = event.getCurrentItem().getItemMeta().getLore().get(0);
+						loc[0] = Integer.parseInt(lore.substring(lore.lastIndexOf("x:")+2, lore.lastIndexOf(" y:")));
+						loc[1] = Integer.parseInt(lore.substring(lore.lastIndexOf("y:")+2, lore.lastIndexOf(" z:")));
+						loc[2] = Integer.parseInt(lore.substring(lore.lastIndexOf("z:")+2, lore.length()-1));
 						event.setCancelled(true);
 						event.getWhoClicked().teleport(new Location(Bukkit.getWorlds().get(0), loc[0], loc[1], loc[2]));
 						event.getWhoClicked().closeInventory();
@@ -317,8 +314,8 @@ public class listener implements Listener {
 			st.set(magic.invoke(null, material), 2000F);
 		} catch (Exception e) {
 			e.printStackTrace();
-			Core.sender.sendMessage("블럭의 강도를 지정하는데에 문제가 생겼습니다!");
-			Core.sender.sendMessage("매터리얼: " + material.name());
+			KukgaMain.sender.sendMessage("블럭의 강도를 지정하는데에 문제가 생겼습니다!");
+			KukgaMain.sender.sendMessage("매터리얼: " + material.name());
 		}
 	}
 	

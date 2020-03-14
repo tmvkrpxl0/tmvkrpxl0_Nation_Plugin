@@ -10,11 +10,11 @@ public class PermissionManager {
 	protected static final String create = "kukga.create";
 	
 	protected PermissionManager() {
-		permissions = ((tmvkrpxl0.Config.CustomPermission)Core.loadFile("권한.yml", tmvkrpxl0.Config.CustomPermission.class)).getPermissions();
+		permissions = ((tmvkrpxl0.Config.CustomPermission)KukgaMain.loadFile("권한.yml", tmvkrpxl0.Config.CustomPermission.class)).getPermissions();
 	}
 	
 	protected void save() {
-		Core.saveFile("권한.yml", tmvkrpxl0.Config.CustomPermission.class, new tmvkrpxl0.Config.CustomPermission(permissions));
+		KukgaMain.saveFile("권한.yml", tmvkrpxl0.Config.CustomPermission.class, new tmvkrpxl0.Config.CustomPermission(permissions));
 	}
 	
 	protected static void setPermission(Player player, String perm) {

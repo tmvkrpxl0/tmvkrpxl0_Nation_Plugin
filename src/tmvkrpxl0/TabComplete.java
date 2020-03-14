@@ -13,42 +13,43 @@ import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 
 public class TabComplete implements TabCompleter{
-	private String [] available;
-	protected TabComplete() {
-		available = new String[tmvkrpxl0.Command.available.length];
-		for(int i = 0;i< tmvkrpxl0.Command.available.length;i++) {
-			available[i] = tmvkrpxl0.Command.available[i].substring(0, tmvkrpxl0.Command.available[i].indexOf(' '));
-		}
-	}
 	@Override
 	public List<String> onTabComplete(CommandSender sender, Command cmd, String text, String[] args) {
 		List<String> r = new LinkedList<String>();
 		if(args.length == 1) {
-			 StringUtil.copyPartialMatches(args[0], Arrays.asList(available), r);
+			 StringUtil.copyPartialMatches(args[0], Arrays.asList(tmvkrpxl0.Command.available), r);
 			 if(!sender.hasPermission("minecraft.command.op")) {
 				 r.remove("저장");
 				 r.remove("설정");
-				 r.remove("패치");
-				 r.remove("test");
 			 }
 			 if(!PermissionManager.getPermission(sender, PermissionManager.create)) {
 				 r.remove("생성");
 				 r.remove("삭제");
+			 }else {
+				 r.remove("초대수락");
+				 r.remove("초대거절");
 			 }
-			 if(!PermissionManager.getPermission(sender, PermissionManager.secondary) || !(sender instanceof Player)) {
+			 if(!PermissionManager.getPermission(sender, PermissionManager.secondary)){
 				 r.remove("초대");
 				 r.remove("추방");
-				 r.remove("승급");
-				 r.remove("강등");
 				 r.remove("전쟁선포");
 				 r.remove("전쟁방어");
-			 }
+			 }else r.remove("탈퇴");
 			 if(!(sender instanceof Player)) {
+				 r.remove("초대");
+				 r.remove("추방");
+				 r.remove("전쟁선포");
+				 r.remove("전쟁방어");
 				 r.remove("초대수락");
 				 r.remove("초대거절");
 				 r.remove("탈퇴");
 				 r.remove("생성");
 				 r.remove("삭제");
+			 }else if(TeamManager.getNation((Player)sender)==null)r.remove("탈퇴");
+			 else {
+				 r.remove("생성");
+				 r.remove("초대수락");
+				 r.remove("초대거절");
 			 }
 			 Collections.sort(r); 
 			 return r;
@@ -58,7 +59,7 @@ public class TabComplete implements TabCompleter{
 				if(PermissionManager.getPermission(sender, PermissionManager.secondary)) {
 					if(TeamManager.getNation((Player)sender)!=null) {
 						LinkedList<String> players = new LinkedList<String>();
-						for(Player p : Core.getOnlinePlayers()) {
+						for(Player p : KukgaMain.getOnlinePlayers()) {
 							players.add(p.getName());
 						}
 						LinkedList<String> available = new LinkedList<>(players);
@@ -125,7 +126,7 @@ public class TabComplete implements TabCompleter{
 			}
 		}else if(args.length > 2 && args[0].equals("설정")) {
 			if(args.length==3) {
-				if(args[1].equals("패치") && Core.patch) {
+				if(args[1].equals("패치") && KukgaMain.patch) {
 					LinkedList<String> files = new LinkedList<>();
 					for(String s : new java.io.File(".").list()) {
 						if(s.endsWith(".jar")) {
@@ -143,7 +144,7 @@ public class TabComplete implements TabCompleter{
 			}else if(args.length==4) {
 				if(args[1].equals("권한설정")) {
 					LinkedList<String> players = new LinkedList<String>();
-					for(Player p : Core.getOnlinePlayers()) {
+					for(Player p : KukgaMain.getOnlinePlayers()) {
 						players.add(p.getName());
 					}
 					StringUtil.copyPartialMatches(args[3], players, r);

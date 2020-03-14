@@ -33,72 +33,73 @@ public class PacketHandler extends ChannelDuplexHandler {
 			 int x = (int) Reflection.getFieldValue(m, "a");
 			 int y = (int) Reflection.getFieldValue(m, "b");
 			 int z = (int) Reflection.getFieldValue(m, "c");
-			 if(e == 1|| e == 2) {
-				 if(listener.blocks.containsKey(p.getWorld().getBlockAt(x, y, z).getType())) {
+			 if(!TeamManager.getNation(p).equals(TerritoryManager.isInRegion(TeamManager.getNation(p), x, z)) && listener.blocks.containsKey(p.getWorld().getBlockAt(x, y, z).getType())) {
+				 if(e == 1|| e == 2) {
+					new BukkitRunnable() {
+						public void run() {
+							p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+							p.removePotionEffect(PotionEffectType.FAST_DIGGING);
+						}
+					}.runTask(KukgaMain.plugin);
+					if(listener.tasks.containsKey(p)) {// to avoid bug
+						Reflection.sendAllPacket(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
+							.getConstructor(int.class, int.class, int.class, int.class, int.class).newInstance(
+									p.getUniqueId().hashCode(), x, y, z, -1));
+					listener.tasks.get(p).interrupt();
+					listener.tasks.remove(p);
+					}
+				 }else if(e == 0) {
 					 new BukkitRunnable() {
 						 public void run() {
-							 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
-							 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
+							 p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 9999*20, 17), true);
+							 p.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, 9999*20, 0), true);
 						 }
-					 }.runTask(Core.plugin);
-				 if(listener.tasks.containsKey(p)) {// to avoid bug
-					 Reflection.sendAllPacket(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
-							 .getConstructor(int.class, int.class, int.class, int.class, int.class).newInstance(
-									 p.getUniqueId().hashCode(), x, y, z, -1));
-					 listener.tasks.get(p).interrupt();
-					 listener.tasks.remove(p);
-				 }
-			 }
-			 }else if(e == 0 && listener.blocks.containsKey(p.getWorld().getBlockAt(x, y, z).getType())) {
-				 new BukkitRunnable() {
-					 public void run() {
-						 p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 9999*20, 17), true);
-						 p.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, 9999*20, 0), true);
-					 }
-				 }.runTask(Core.plugin);
-				 Thread t = new Thread() {
-						int mining = 0;
-						public void run() {
-								try {
-									while(mining < 10 && !isInterrupted()) {
-										Reflection.sendAllPacket(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
-												.getConstructor(int.class, int.class, int.class, int.class, int.class).newInstance(p.getUniqueId().hashCode(), 
-														x, y, z, mining));
-										mining++;
-										Thread.sleep((long)(listener.blocks.get(p.getWorld().getBlockAt(x, y, z).getType())/10.0*1000));
-									}
-										Thread.sleep(1);
-										new BukkitRunnable() {
-											public void run() {
-												try {
-													new BukkitRunnable() {
-														 public void run() {
-															 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
-															 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
-														 }
-													 }.runTask(Core.plugin);
-													org.bukkit.block.Block block = p.getWorld().getBlockAt(x, y, z);
-													if(block.getType().equals(Material.BEACON))TerritoryManager.deleteRegion(block.getLocation());
-													block.breakNaturally();
-													p.getWorld().spigot().playEffect(p.getLocation(), Effect.STEP_SOUND);
-													Reflection.sendAllPacket(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
-															.getConstructor(int.class, int.class, int.class, int.class, int.class).newInstance(p.getUniqueId().hashCode(), x, y, z, -1));
-												} catch (Exception e) {
-													// TODO Auto-generated catch block
-													e.printStackTrace();
+					 }.runTask(KukgaMain.plugin);
+					 Thread t = new Thread() {
+							int mining = 0;
+							public void run() {
+									try {
+										while(mining < 10 && !isInterrupted()) {
+											Reflection.sendAllPacket(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
+													.getConstructor(int.class, int.class, int.class, int.class, int.class).newInstance(p.getUniqueId().hashCode(), 
+															x, y, z, mining));
+											mining++;
+											Thread.sleep((long)(listener.blocks.get(p.getWorld().getBlockAt(x, y, z).getType())/10.0*1000));
+										}
+											Thread.sleep(1);
+											new BukkitRunnable() {
+												@SuppressWarnings("deprecation")
+												public void run() {
+													try {
+														new BukkitRunnable() {
+															 public void run() {
+																 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+																 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
+															 }
+														 }.runTask(KukgaMain.plugin);
+														org.bukkit.block.Block block = p.getWorld().getBlockAt(x, y, z);
+														if(block.getType().equals(Material.BEACON))TerritoryManager.deleteRegion(block.getLocation());
+														block.breakNaturally();
+														p.getWorld().spigot().playEffect(p.getLocation(), Effect.STEP_SOUND);
+														Reflection.sendAllPacket(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
+																.getConstructor(int.class, int.class, int.class, int.class, int.class).newInstance(p.getUniqueId().hashCode(), x, y, z, -1));
+													} catch (Exception e) {
+														// TODO Auto-generated catch block
+														e.printStackTrace();
+													}
 												}
-											}
-										}.runTask(Core.plugin);
-								} catch (Exception e) {
+											}.runTask(KukgaMain.plugin);
+									} catch (Exception e) {
+								}
 							}
+						};
+						if(listener.tasks.containsKey(p) && listener.tasks.get(p).isAlive()) {
+							listener.tasks.get(p).interrupt();
+							listener.tasks.remove(p);
 						}
-					};
-					if(listener.tasks.containsKey(p) && listener.tasks.get(p).isAlive()) {
-						listener.tasks.get(p).interrupt();
-						listener.tasks.remove(p);
-					}
-					listener.tasks.put(p, t);
-					t.start();
+						listener.tasks.put(p, t);
+						t.start();
+				 }
 			 }
 	 }
 		 super.channelRead(channel, m);
