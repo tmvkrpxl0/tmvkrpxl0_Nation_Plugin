@@ -2,12 +2,14 @@ package tmvkrpxl0.Kukga;
 
 
 import java.util.HashMap;
+import java.util.Objects;
+import java.util.Random;
 
+import tmvkrpxl0.Config.BattleInfo;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.entity.Damageable;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -33,11 +35,10 @@ import org.bukkit.event.world.WorldSaveEvent;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import tmvkrpxl0.Config.BattleInfo;
-
+@SuppressWarnings({"deprecation", "unused"})
 public class KukgaListener implements Listener {
-	protected static HashMap<Player, Boolean> choose = new HashMap<Player, Boolean>();
-	protected static HashMap<Player, Boolean> beacon = new HashMap<Player, Boolean>();
+	protected static HashMap<Player, Boolean> choose = new HashMap<>();
+	protected static HashMap<Player, Boolean> beacon = new HashMap<>();
 	protected static HashMap<Player, Thread> tasks = new HashMap<>();
 	protected static HashMap<Material, Double> blocks = new HashMap<>();
 	
@@ -59,8 +60,7 @@ public class KukgaListener implements Listener {
 	@EventHandler
 	public void onPlayerJoin(PlayerJoinEvent event){
 		Player p = event.getPlayer();
-		if(KukgaMain.patch && p.hasPermission("minecraft.command.op"))p.sendMessage(ChatColor.RED + "국가 플러그인을 사용할 수 없습니다. 사용하시려면 [/국가 설정 패치]를 사용하세요");
-		p.setHealth(((Damageable)p).getHealth());
+		p.setHealth(p.getHealth());
 		KukgaMain.injector.addPlayer(p);
 	}
 	
@@ -86,9 +86,9 @@ public class KukgaListener implements Listener {
 	@EventHandler
 	public void onBlockDamage(BlockDamageEvent event) {
 		String from = TeamManager.getNation(event.getPlayer());
-		String owner = TerritoryManager.isInRegion(from, event.getBlock().getLocation());
+		String owner = TerritoryManager.isInRegion(null, event.getBlock().getLocation());
 		if(owner!=null) {
-			Player p = event.getPlayer();
+			final Player p = event.getPlayer();
 			if(!owner.equals(from)) {
 				BattleInfo info = BattleManager.warWithWho(from);
 				if(blocks.containsKey(event.getBlock().getType())) {
@@ -111,7 +111,7 @@ public class KukgaListener implements Listener {
 						p.sendMessage("이 블럭은 " + owner + " 국가의 소유입니다!");
 					event.setCancelled(true);
 				}
-			}else if(event.getBlock().getType().equals(Material.BEACON)){
+			}else if(event.getBlock().getType().equals(Material.BEACON) && owner.equals(TerritoryManager.getBeaconOwner(event.getBlock().getLocation()))){
 				p.sendMessage("아군 신호기는 부술 수 없습니다!");
 				if(tasks.containsKey(p)) {
 					new BukkitRunnable() {
@@ -131,16 +131,16 @@ public class KukgaListener implements Listener {
 	
 	
 	@EventHandler
-	public void onBlockBreak(BlockBreakEvent event){
-		String owner = TerritoryManager.isInRegion(TeamManager.getNation(event.getPlayer()), event.getBlock().getLocation());
+	public void onBlockBreak(final BlockBreakEvent event){
+		String owner = TerritoryManager.isInRegion(null, event.getBlock().getLocation());
 		if(owner!=null) {
-			Player p = event.getPlayer();
+			final Player p = event.getPlayer();
 			if(!owner.equals(TeamManager.getNation(p))) {
 				BattleInfo info = BattleManager.warWithWho(TeamManager.getNation(event.getPlayer()));
 				if(info==null || !(info.getStarter().equals(owner) || info.getVictim().equals(owner)) || info.getReadyTime()>0)
 					p.sendMessage("이 블럭은 " + owner + " 국가의 소유입니다!");
 				event.setCancelled(true);
-			}else if(event.getBlock().getType().equals(Material.BEACON)) {
+			}else if(event.getBlock().getType().equals(Material.BEACON) && owner.equals(TerritoryManager.getBeaconOwner(event.getBlock().getLocation()))) {
 				event.getPlayer().sendMessage("아군 신호기는 부술 수 없습니다!");
 				if(tasks.containsKey(event.getPlayer())) {
 					tasks.remove(event.getPlayer()).interrupt();
@@ -171,9 +171,8 @@ public class KukgaListener implements Listener {
 	@EventHandler
 	public void onProjectileHit(PlayerTeleportEvent event){
 		if(event.getCause() == TeleportCause.ENDER_PEARL && 
-			TerritoryManager.isInRegion(TeamManager.getNation(event.getPlayer()), event.getTo())!=null &&
-			!TeamManager.getNation(event.getPlayer()).equals(TerritoryManager.isInRegion(
-					TeamManager.getNation(event.getPlayer()), event.getTo()))){
+			TerritoryManager.isInRegion(null, event.getTo())!=null &&
+			!TerritoryManager.isInRegion(null, event.getTo()).equals(TeamManager.getNation(event.getPlayer()))){
 				event.setCancelled(true);
 				event.getPlayer().sendMessage("불가능합니다!");
 			}
@@ -199,22 +198,25 @@ public class KukgaListener implements Listener {
 			event.setCancelled(true);
 		}
 	}
-	
-	@SuppressWarnings("deprecation")
+
 	@EventHandler
 	public void onPlayerInteract(PlayerInteractEvent event) {
 		Player p = event.getPlayer();
 		if(event.getAction().equals(Action.RIGHT_CLICK_BLOCK)) {
-			String owner = TerritoryManager.isInRegion(TeamManager.getNation(p), event.getClickedBlock().getLocation());
+			String owner = TerritoryManager.isInRegion(null, event.getClickedBlock().getLocation());
 			if(owner!=null) {
 				if(!owner.equals(TeamManager.getNation(p))) {
 					p.sendMessage("이 블럭은 " + owner + " 국가의 소유입니다!");
 					event.setCancelled(true);
 					return;
-				}else if(event.getClickedBlock().getType().equals(Material.BEACON)){
-					event.setCancelled(true);
-					p.openInventory(TerritoryManager.openBeacon(event.getClickedBlock().getLocation()));
-					beacon.put(p, true);
+				}else if(event.getClickedBlock().getType().equals(Material.BEACON) && owner.equals(TerritoryManager.getBeaconOwner(event.getClickedBlock().getLocation()))){
+					if(event.getPlayer().isSneaking()){
+						event.setCancelled(true);
+						p.openInventory(TerritoryManager.openBeacon(event.getClickedBlock().getLocation()));
+						beacon.put(p, true);
+					}else if(new Random().nextInt()%8==0){
+						event.getPlayer().sendMessage(KukgaMain.prefix + ChatColor.YELLOW + "쉬프트를 누루시고 신호기를 누루시면 " + ChatColor.BLUE + "텔레포트" + ChatColor.YELLOW + "하실 수 있습니다!");
+					}
 					return;
 				}
 			}
@@ -236,19 +238,21 @@ public class KukgaListener implements Listener {
 				if(from!=null) {
 					if(event.getItemInHand().getItemMeta().hasDisplayName()) {
 						if(TerritoryManager.getRegionNumber(from)<=5) {
-							String nation = TerritoryManager.registerRegion(from, event.getBlock().getLocation(), 
-								event.getItemInHand().getItemMeta().getDisplayName());
-							if(nation!=null) {
-								if(from.equals(nation))p.sendMessage("당신의 다른 영지와 너무 가깝습니다!");
-								else p.sendMessage(nation + "국가와 너무 가깝습니다! 더 멀리가세요!");
-							}else return;
+							if(KukgaMain.config.getBoolean("territory.allowbuildterritoryinotherdim") || Bukkit.getWorlds().indexOf(event.getBlock().getWorld())==0) {
+								String nation = TerritoryManager.registerRegion(from, event.getBlock().getLocation(),
+										event.getItemInHand().getItemMeta().getDisplayName(), Bukkit.getWorlds().indexOf(event.getBlock().getLocation().getWorld()));
+								if(nation!=null) {
+									if(from.equals(nation))p.sendMessage("당신의 다른 영지와 너무 가깝습니다!");
+									else p.sendMessage(nation + "국가와 너무 가깝습니다! 더 멀리가세요!");
+								}else return;
+							}else p.sendMessage("이 서버에서는 다른 세계에 영지를 건설할 수 없습니다!");
 						}else p.sendMessage("당신의 국가는 너무 많은 신호기를 가지고 있습니다!");
 					}else p.sendMessage(ChatColor.RED + "도대체 이런일이 어떻게 벌어진건지 모르겠지만, 당신은 허용되지 않은 신호기를 들고 있습니다.");
 						event.setCancelled(true);
 				}else {
 					p.sendMessage("국가에 소속되어 있어야 합니다!");
-					event.setCancelled(true);
 				}
+				event.setCancelled(true);
 			}
 		}else if(!owner.equals(from)) {
 					event.getPlayer().sendMessage(owner + "국의 영토 안에서는 블럭을 설치할 수 없습니다!");
@@ -266,7 +270,8 @@ public class KukgaListener implements Listener {
 		}
 	@EventHandler
 	public void onInventoryClick(InventoryClickEvent event){
-		if(beacon.containsKey(event.getWhoClicked())) {
+		Player p = (Player) event.getWhoClicked();
+		if(beacon.containsKey(p)) {
 			if(event.getRawSlot()<54) {
 				if(event.getAction().name().contains("PICKUP")) {
 						if(!event.getCurrentItem().getItemMeta().getDisplayName().equals(ChatColor.WHITE + "[" + ChatColor.YELLOW  + "이곳" + ChatColor.WHITE + "]")) {
@@ -280,7 +285,7 @@ public class KukgaListener implements Listener {
 						event.setCancelled(true);
 						event.getWhoClicked().teleport(new Location(Bukkit.getWorlds().get(0), loc[0], loc[1], loc[2]));
 						event.getWhoClicked().closeInventory();
-						beacon.remove(event.getWhoClicked());
+						beacon.remove(p);
 					}
 				}
 			}
@@ -291,7 +296,8 @@ public class KukgaListener implements Listener {
 	
 	@EventHandler
 	public void onInventoryDrag(InventoryDragEvent event) {
-		if(beacon.containsKey(event.getWhoClicked())) {
+		Player p = (Player)event.getWhoClicked();
+		if(beacon.containsKey(p)) {
 			for(Integer slot : event.getRawSlots()) {
 				if(slot<54)event.setCancelled(true);
 			}
@@ -300,15 +306,16 @@ public class KukgaListener implements Listener {
 	
 	@EventHandler
 	public void onInventoryClose(InventoryCloseEvent event) {
-		if(beacon.containsKey(event.getPlayer()))beacon.remove(event.getPlayer());
+		Player p = (Player) event.getPlayer();
+		beacon.remove(p);
 	}
 	
 	protected static void changeHardness(Material material, double hardness) {
 		blocks.put(material, hardness);
 		try {
-			java.lang.reflect.Field st = KukgaReflection.getField(KukgaReflection.getClass("{nms}.Block"), "strength");
+			java.lang.reflect.Field st = Reflection.getField(Objects.requireNonNull(Reflection.getClass("{nms}.Block")), "strength");
 			st.setAccessible(true);
-			java.lang.reflect.Method magic = KukgaReflection.getClass("{cb}.util.CraftMagicNumbers").getMethod("getBlock", Material.class);
+			java.lang.reflect.Method magic = Objects.requireNonNull(Reflection.getClass("{cb}.util.CraftMagicNumbers")).getMethod("getBlock", Material.class);
 			magic.setAccessible(true);
 			st.set(magic.invoke(null, material), 2000F);
 		} catch (Exception e) {

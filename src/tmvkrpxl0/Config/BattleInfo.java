@@ -1,50 +1,42 @@
 package tmvkrpxl0.Config;
 
-public class BattleInfo {
-	private String Starter;
-	private String Victim;
-	private int ReadyTime;
-	private int WarTime;
-	public BattleInfo() {
-		ReadyTime=0;
-		WarTime=0;
-	}
-	
-	public BattleInfo(String s, String v, int rt, int wt) {
-		Starter = s;
-		Victim = v;
-		ReadyTime= rt;
-		WarTime = wt;
-	}
-	
-	public String getStarter() {
-		return Starter;
-	}
-	
-	public void setStarter(String s) {
-		Starter = s;
-	}
-	
-	public String getVictim() {
-		return Victim;
-	}
-	
-	public void setVictim(String v) {
-		Victim = v;
-	}
-	public int getReadyTime() {
-		return ReadyTime;
-	}
-	
-	public void setReadyTime(int t) {
-		ReadyTime=t;
-	}
-	
-	public int getWarTime() {
-		return WarTime;
-	}
-	
-	public void setWarTime(int wt) {
-		WarTime = wt;
-	}
+public class BattleInfo{
+    private int ReadyTime;
+    private int WarTime;
+    private String Starter;
+    private String Victim;
+    public BattleInfo(int ReadyTime, int WarTime, String Starter, String Victim){
+        this.ReadyTime = ReadyTime;
+        this.WarTime = WarTime;
+        this.Starter = Starter;
+        this.Victim = Victim;
+    }
+
+    public boolean isReady(){
+        return ReadyTime>0;
+    }
+
+    public void setReadyTime(int r){
+        ReadyTime = r;
+    }
+
+    public void setWarTime(int w){
+        WarTime = w;
+    }
+
+    public String getStarter(){
+        return Starter;
+    }
+
+    public String getVictim(){
+        return Victim;
+    }
+
+    public int getReadyTime(){
+        return ReadyTime;
+    }
+
+    public int getWarTime(){
+        return WarTime;
+    }
 }

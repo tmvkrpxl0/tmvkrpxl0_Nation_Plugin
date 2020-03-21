@@ -1,7 +1,9 @@
 package tmvkrpxl0.Kukga;
 
 import java.lang.reflect.Method;
+import java.util.Objects;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Effect;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -32,78 +34,90 @@ public class PacketHandlerNew extends ChannelDuplexHandler {
 	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
 		super.write(ctx, msg, promise);
 	}
-	 @Override 
-	 public void channelRead(ChannelHandlerContext channel, Object m) throws Exception { 
-		 if(m.getClass().getSimpleName().equalsIgnoreCase("PacketPlayInBlockDig")) {
-			 Object position = KukgaReflection.getFieldValue(m, "a");
-			 Class<?> bp = KukgaReflection.getClass("{nms}.BlockPosition");
-			 Method getx = bp.getSuperclass().getDeclaredMethod("getX");
-			 getx.setAccessible(true);
-			 Method gety = bp.getSuperclass().getDeclaredMethod("getY");
-			 Method getz = bp.getSuperclass().getDeclaredMethod("getZ");
-			 getz.setAccessible(true);
-			 int x = (int) getx.invoke(position);
-			 int y = (int) gety.invoke(position);
-			 int z = (int) getz.invoke(position);
-			 String e = KukgaReflection.getFieldValue(m, "c").toString();
-			 if(!TeamManager.getNation(p).equals(TerritoryManager.isInRegion(TeamManager.getNation(p), x, z)) && KukgaListener.blocks.containsKey(p.getWorld().getBlockAt(x, y, z).getType())) {
-				 if(e.equals("ABORT_DESTROY_BLOCK") || e.equals("STOP_DESTRY_BLOCK")) {
-					new BukkitRunnable() {
-						public void run() {
-							p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
-							p.removePotionEffect(PotionEffectType.FAST_DIGGING);
+	@Override
+	public void channelRead(ChannelHandlerContext channel, Object m) throws Exception {
+		if(m.getClass().getSimpleName().equalsIgnoreCase("PacketPlayInBlockDig")) {
+			Object position = Reflection.getFieldValue(m, "a");
+			final Class<?> bp = Objects.requireNonNull(Reflection.getClass("{nms}.BlockPosition"));
+			Method getx = bp.getSuperclass().getDeclaredMethod("getX");
+			getx.setAccessible(true);
+			Method gety = bp.getSuperclass().getDeclaredMethod("getY");
+			Method getz = bp.getSuperclass().getDeclaredMethod("getZ");
+			getz.setAccessible(true);
+			final int x = (int) getx.invoke(position);
+			final int y = (int) gety.invoke(position);
+			final int z = (int) getz.invoke(position);
+			try{
+				final String nation = TeamManager.getNation(p);
+				final int worldidx = Bukkit.getWorlds().indexOf(p.getWorld());
+				final String owner = TerritoryManager.isInRegion(null, x, z, worldidx);
+				final String e = Reflection.getFieldValue(m, "c").toString();
+				final Material type = Bukkit.getWorlds().get(worldidx).getBlockAt(x, y, z).getType();
+				if(KukgaListener.blocks.containsKey(type) && (owner==null || !type.equals(Material.BEACON) || !owner.equals(nation))) {
+					if(e.equals("ABORT_DESTROY_BLOCK") || e.equals("STOP_DESTRY_BLOCK")) {
+						new BukkitRunnable() {
+							public void run() {
+								p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+								p.removePotionEffect(PotionEffectType.FAST_DIGGING);
+							}
+						}.runTask(KukgaMain.plugin);
+						if(KukgaListener.tasks.containsKey(p)) {// to avoid bug
+							Reflection.sendAllPacket(Objects.requireNonNull(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation"))
+									.getConstructor(int.class, bp, int.class).newInstance(
+											p.getUniqueId().hashCode(), bp.getConstructor(int.class, int.class, int.class).newInstance(x, y, z), -1));
+							KukgaListener.tasks.get(p).interrupt();
+							KukgaListener.tasks.remove(p);
 						}
-					}.runTask(KukgaMain.plugin);
-					if(KukgaListener.tasks.containsKey(p)) {// to avoid bug
-						KukgaReflection.sendAllPacket(KukgaReflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
-							.getConstructor(int.class, bp, int.class).newInstance(
-									p.getUniqueId().hashCode(), bp.getConstructor(int.class, int.class, int.class).newInstance(x, y, z), -1));
-						KukgaListener.tasks.get(p).interrupt();
-						KukgaListener.tasks.remove(p);
-					}
-				 }else if(e.equals("START_DESTROY_BLOCK")) {
-					 new BukkitRunnable() {
-						 public void run() {
-							 p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 9999*20, 17), true);
-							 p.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, 9999*20, 0), true);
-						 }
-					 }.runTask(KukgaMain.plugin);
-					 Thread t = new Thread() {
+					}else if(e.equals("START_DESTROY_BLOCK")) {
+						new BukkitRunnable() {
+							public void run() {
+								p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 9999*20, 17), true);
+								p.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, 9999*20, 0), true);
+							}
+						}.runTask(KukgaMain.plugin);
+						Thread t = new Thread() {
 							int mining = 0;
 							public void run() {
-									try {
-										while(mining < 10 && !isInterrupted()) {
-											KukgaReflection.sendAllPacket(KukgaReflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
-													 .getConstructor(int.class, bp, int.class).newInstance(
-															 p.getUniqueId().hashCode(), bp.getConstructor(int.class, int.class, int.class).newInstance(x, y, z), mining));
-											mining++;
-											Thread.sleep((long)(KukgaListener.blocks.get(p.getWorld().getBlockAt(x, y, z).getType())/10.0*1000));
+								try {
+									while(mining < 10) {
+										if(isInterrupted())interrupt();
+										Reflection.sendAllPacket(Objects.requireNonNull(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation"))
+												.getConstructor(int.class, bp, int.class).newInstance(
+														p.getUniqueId().hashCode(), bp.getConstructor(int.class, int.class, int.class).newInstance(x, y, z), mining));
+										mining++;
+										if(!KukgaListener.blocks.containsKey(Bukkit.getWorlds().get(worldidx).getBlockAt(x, y, z).getType())){
+											interrupt();
+											sleep(1);
 										}
-											Thread.sleep(1);
-											new BukkitRunnable() {
-												@SuppressWarnings("deprecation")
-												public void run() {
-													try {
-														new BukkitRunnable() {
-															 public void run() {
-																 p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
-																 p.removePotionEffect(PotionEffectType.FAST_DIGGING);
-															 }
-														 }.runTask(KukgaMain.plugin);
-														 Block block = p.getWorld().getBlockAt(x, y, z);
-														 block.breakNaturally();
-														if(block.getType().equals(Material.BEACON))TerritoryManager.deleteRegion(block.getLocation());
-														p.getWorld().spigot().playEffect(p.getLocation(), Effect.STEP_SOUND);
-														KukgaReflection.sendAllPacket(KukgaReflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation")
-																 .getConstructor(int.class, bp, int.class).newInstance(
-																		 p.getUniqueId().hashCode(), bp.getConstructor(int.class, int.class, int.class).newInstance(x, y, z), -1));
-													} catch (Exception e) {
-														// TODO Auto-generated catch block
-														e.printStackTrace();
+										sleep((long)(KukgaListener.blocks.get(type)/10.0*1000));
+									}
+									sleep(1);
+									new BukkitRunnable() {
+										public void run() {
+											try {
+												new BukkitRunnable() {
+													public void run() {
+														p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+														p.removePotionEffect(PotionEffectType.FAST_DIGGING);
 													}
-												}
-											}.runTask(KukgaMain.plugin);
-									} catch (Exception e) {
+												}.runTask(KukgaMain.plugin);
+												Block block = Bukkit.getWorlds().get(worldidx).getBlockAt(x, y, z);
+												if(type.equals(Material.BEACON)){
+													block.setType(Material.AIR);
+													TerritoryManager.deleteRegion(owner, block.getLocation());
+												}else block.breakNaturally();
+												p.getWorld().spigot().playEffect(p.getLocation(), Effect.STEP_SOUND);
+												Reflection.sendAllPacket(Objects.requireNonNull(Reflection.getClass("{nms}.PacketPlayOutBlockBreakAnimation"))
+														.getConstructor(int.class, bp, int.class).newInstance(
+																p.getUniqueId().hashCode(), bp.getConstructor(int.class, int.class, int.class).newInstance(x, y, z), -1));
+											} catch (Exception e) {
+												e.printStackTrace();
+											}
+										}
+									}.runTask(KukgaMain.plugin);
+								} catch (InterruptedException ignored) {
+								} catch (Exception e){
+									e.printStackTrace();
 								}
 							}
 						};
@@ -113,10 +127,15 @@ public class PacketHandlerNew extends ChannelDuplexHandler {
 						}
 						KukgaListener.tasks.put(p, t);
 						t.start();
-				 }
-			 }
-	 }
-		 super.channelRead(channel, m);
-		 }
-	 
+					}
+				}
+			}catch (InterruptedException ignored){
+			}catch (Exception e2){
+				e2.printStackTrace();
+			}
+
+		}
+		super.channelRead(channel, m);
+	}
+
 }

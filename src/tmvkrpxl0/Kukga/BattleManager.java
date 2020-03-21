@@ -1,26 +1,42 @@
 package tmvkrpxl0.Kukga;
 
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+
+import tmvkrpxl0.Config.BattleInfo;
+
 import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.LinkedList;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import tmvkrpxl0.Config.BattleInfo;
-import tmvkrpxl0.Config.BattleStateConfig;
-
 class BattleManager {
-    private static List<BattleInfo> battleState; //int[0] = 준비 [1]=전쟁
     private static LinkedHashMap<BattleInfo, BukkitRunnable> timers;
-    protected static LinkedHashMap<Player, String> choise = new LinkedHashMap<Player, String>();
+    private static LinkedList<BattleInfo> battleState;
 	protected BattleManager(){
-		battleState = ((BattleStateConfig)KukgaMain.loadFile("전쟁상황.yml", BattleStateConfig.class)).getBattleState();
-    	timers = new LinkedHashMap<>();
+		battleState = new LinkedList<>();
+		try {
+			File f = new File(KukgaMain.plugin.getDataFolder() + File.separator + "전쟁상황.cfg");
+			if(!f.exists()){
+				f.getParentFile().mkdirs();
+				f.createNewFile();
+			}
+			for(String l : Files.readAllLines(f.toPath(), StandardCharsets.UTF_8)) {
+				try {
+					battleState.add(new BattleInfo(Integer.parseInt(l.substring(l.indexOf("ReadyTime:") + 10, l.indexOf(" WarTime:"))), Integer.parseInt(l.substring(l.indexOf("WarTime:") + 8)), l.substring(l.indexOf("Starter:")+8, l.indexOf(" Victim:")), l.substring(l.indexOf("Victim:") + 7, (l.indexOf(" ReadyTime:")))));
+				} catch(Exception ignored){
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		timers = new LinkedHashMap<>();
         if(!battleState.isEmpty()) {
-            int de = KukgaMain.Config.getWar().get("delay message time after server restart");
-            int rt = KukgaMain.Config.getWar().get("re-preparing time after server restart");
+            int de = KukgaMain.config.getInt("war.delay message time after server restart");
+            final int rt = KukgaMain.config.getInt("war.re-preparing time after server restart");
             new BukkitRunnable(){
             @Override
             public void run(){
@@ -47,18 +63,19 @@ class BattleManager {
     protected static byte declare(String s, String v){//sa[0]=건쪽 sa[1]=선포 당한쪽
         if(warWithWho(s)!=null)return 1;//거는쪽에서 이미 전쟁중
         if(warWithWho(v)!=null)return 2;//받는쪽
-        if(!TeamManager.getTeamList().contains(v))return 3;
+        if(!TeamManager.getTeamList().contains(v))return 3;//v라는 팀이 없음
+		if(TerritoryManager.getRegionNumber(v)==0)return 4;//당하는 쪽이 영토가 없음
         for(String p : TeamManager.getTeam(s)) {
         	Bukkit.getPlayerExact(p).sendMessage(KukgaMain.prefix + v + ChatColor.RED + "국과의 전쟁을 시작합니다.");
-        	Bukkit.getPlayerExact(p).sendMessage(KukgaMain.prefix + "준비시간은 총 " + secondsToString(KukgaMain.Config.getWar().get("preparing time")) + " 이며, 전쟁시간은 " +
-        			secondsToString(KukgaMain.Config.getWar().get("battle time")) + "입니다");
+        	Bukkit.getPlayerExact(p).sendMessage(KukgaMain.prefix + "준비시간은 총 " + secondsToString(KukgaMain.config.getInt("war.preparing time")) + " 이며, 전쟁시간은 " +
+        			secondsToString(KukgaMain.config.getInt("war.battle time")) + "입니다");
         }
         for(String p : TeamManager.getTeam(v)) {
         	Bukkit.getPlayerExact(p).sendMessage(KukgaMain.prefix + s + ChatColor.DARK_RED + "국에서 전쟁을 선포했습니다!");
-        	Bukkit.getPlayerExact(p).sendMessage(KukgaMain.prefix + "준비시간은 총 " + secondsToString(KukgaMain.Config.getWar().get("preparing time")) + " 이며, 전쟁시간은 " +
-        			secondsToString(KukgaMain.Config.getWar().get("battle time")) + "입니다");
+        	Bukkit.getPlayerExact(p).sendMessage(KukgaMain.prefix + "준비시간은 총 " + secondsToString(KukgaMain.config.getInt("war.preparing time")) + " 이며, 전쟁시간은 " +
+        			secondsToString(KukgaMain.config.getInt("war.battle time")) + "입니다");
         }
-        BattleInfo info = new BattleInfo(s, v, KukgaMain.Config.getWar().get("preparing time"), KukgaMain.Config.getWar().get("battle time"));
+        BattleInfo info = new BattleInfo(KukgaMain.config.getInt("war.preparing time"), KukgaMain.config.getInt("war.battle time"), s, v);
         battleState.add(info);
         setTimer(info);
         return 0;// 0이면 성공
@@ -76,16 +93,29 @@ class BattleManager {
         return null;
     }
     protected void save(){
-    	KukgaMain.saveFile("전쟁상황.yml", BattleStateConfig.class, new BattleStateConfig(battleState));
+		try {
+			File f = new File(KukgaMain.plugin.getDataFolder() + File.separator + "전쟁상황.cfg");
+			if(!f.exists()){
+				f.getParentFile().mkdirs();
+				f.createNewFile();
+			}
+			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f), StandardCharsets.UTF_8));
+			for(BattleInfo info : battleState){
+				writer.write("Starter:" + info.getStarter() + " Victim:" + info.getVictim() + " ReadyTime:" + info.getReadyTime() + " WarTime:" + info.getWarTime());
+			}
+			writer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
     }
     
-    private static void setTimer(BattleInfo info){
+    private static void setTimer(final BattleInfo info){
         //note: runTaskTimer 쓸때, delay 초 뒤에 시작되며, period 마다 한번씩
     	
         timers.put(info, new BukkitRunnable(){
             @Override
             public void run(){
-            	if(info.getReadyTime()>0) {
+            	if(info.isReady()) {
             		info.setReadyTime(info.getReadyTime()-1);
             		switch(info.getReadyTime()) {
             		case 180:
@@ -198,6 +228,7 @@ class BattleManager {
     
     protected static String getOpponent(String nation) {
     	BattleInfo info = warWithWho(nation);
-    	return nation.equals(info.getStarter())?info.getVictim():info.getStarter();
+    	if(info!=null)return nation.equals(info.getStarter())?info.getVictim():info.getStarter();
+    	else return "";
     }
 }

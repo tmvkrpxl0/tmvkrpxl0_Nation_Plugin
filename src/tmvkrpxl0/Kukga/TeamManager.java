@@ -1,57 +1,72 @@
 package tmvkrpxl0.Kukga;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 
 import org.bukkit.Bukkit;
-import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
 public class TeamManager {
-	private static Map<String, List<UUID>> team;
 	protected static LinkedHashMap<UUID, String> invites;
-	ConsoleCommandSender sender = KukgaMain.sender;
+	private static FileConfiguration config;
 	protected TeamManager(){
-		//여기서 팀 정보를 불러오기도 합니다
-		team = ((tmvkrpxl0.Config.TeamConfig)KukgaMain.loadFile("팀.yml", tmvkrpxl0.Config.TeamConfig.class)).getTeams();
-		invites = new LinkedHashMap<UUID, String>();
+		File f = new File(KukgaMain.plugin.getDataFolder() + File.separator + "팀.yml");
+		try{
+			if(!f.exists()){
+				f.getParentFile().mkdirs();
+				f.createNewFile();
+			}
+			config = YamlConfiguration.loadConfiguration(f);
+			invites = new LinkedHashMap<>();
+		} catch(IOException e){
+			e.printStackTrace();
+		}
 	}
-	
+
 	protected void save(){
-		KukgaMain.saveFile("팀.yml", tmvkrpxl0.Config.TeamConfig.class, new tmvkrpxl0.Config.TeamConfig(team));
+		File f = new File(KukgaMain.plugin.getDataFolder() + File.separator + "팀.yml");
+		try {
+			if(!f.exists()){
+				f.getParentFile().mkdirs();
+				f.createNewFile();
+			}
+			config.save(f);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
-	
+
 	protected static String getNation(Player player) {
-		if(!team.keySet().isEmpty())
-		for(String s: team.keySet()) {
-			for(UUID k : team.get(s)) {;
-				if(player.getUniqueId().equals(k))return s;
+		List<String> temp;
+		String uuid = player.getUniqueId().toString();
+		String nation = null;
+		keygetter:for(String s : config.getKeys(false)){
+			temp = config.getStringList(s);
+			for(String t : temp){
+				if(t.equals(uuid)){
+					nation = s;
+					break keygetter;
+				}
 			}
 		}
-		return null;
+		return nation;
 	}
-	protected static void createTeam(String Teamname, Player player) {
-		LinkedList<UUID> ls = new LinkedList<UUID>();
-		ls.add(player.getUniqueId());
-		team.put(Teamname, ls);
-		TerritoryManager.addNation(Teamname);
+	protected static void createTeam(String nation, Player player) {
+		List<String> ls = new LinkedList<>();
+		ls.add(player.getUniqueId().toString());
+		config.set(nation, ls);
 	}
-	
-	protected static void deleteTeam(String nation){
-		deleteTeam(nation, "국가가 멸망했습니다!");
-	}
-	
+
 	protected static void deleteTeam(String nation, String message) {
-		team.remove(nation);
-		TerritoryManager.deleteNation(nation);
 		BattleManager.remove(nation);
 		KukgaMain.broadcast(nation + message);
+		config.set(nation, null);
+		TerritoryManager.deleteTeam(nation);
 	}
-	protected static boolean invite(Player player, String nation) {
+	protected static boolean invite(final Player player, String nation) {
 		if(invites.containsKey(player.getUniqueId()))return false;
 		invites.put(player.getUniqueId(), nation);
 		Bukkit.getPlayer(player.getUniqueId()).sendMessage(nation + "국가에서 초대가 왔습니다. 수락하시겠습니까?(제한시간 30초)");
@@ -67,30 +82,24 @@ public class TeamManager {
 		}.runTaskLater(KukgaMain.plugin, 20 * 30);
 		return true;
 	}
-	
+
 	protected static void joinTeam(Player player, String nation){
-		List<UUID> t = team.get(nation);
-		t.add(player.getUniqueId());
-		team.put(nation, t);
+		config.set(nation, config.getStringList(nation).add(player.getUniqueId().toString()));
 	}
-	
+
 	protected static void leaveTeam(Player player, String nation){
-		List<UUID> t = team.get(nation);
-		t.remove(player.getUniqueId());
-		team.put(nation, t);
+		config.set(nation, config.getStringList(nation).remove(player.getUniqueId().toString()));
 	}
-	
+
 	protected static List<String> getTeam(String nation){
 		LinkedList<String> temp = new LinkedList<>();
-		for(UUID s : team.get(nation)) {
-			if(Bukkit.getPlayer(s)==null)temp.add(Bukkit.getPlayer(s).getName());
+		for(String s : config.getStringList(nation)) {
+			if(Bukkit.getPlayerExact(s)!=null)temp.add(Bukkit.getPlayerExact(s).getName());
 		}
 		return temp;
 	}
-	
+
 	protected static Set<String> getTeamList(){
-		return team.keySet();
+		return config.getKeys(false);
 	}
-	
-	
 }

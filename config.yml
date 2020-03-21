@@ -1,13 +1,13 @@
-# 국가 플러그인의 설정파일입니다!
 war:
-   preparing time: 300 #초
-   battle time: 600 #초
-   delay message time after server restart: 60 #전쟁 상황 복구 메세지 지연시간
-   re-preparing time after server restart: 120 #전쟁 상황 복구 이후 준비시간
+   preparing time: 300
+   battle time: 600
+   delay message time after server restart: 60
+   re-preparing time after server restart: 120
    
 territory:
-   minDistance: 128 #최소거리
-   minDistanceFriendly: 64 #아군 최소거리
-   beaconBreakTime: 10 #신호기 파괴할때 걸리는 시간
-   ironDoorBreakTime: 45 #철문 부수는데 걸리는 시간
+   minDistance: 128
+   minDistanceFriendly: 64
+   beaconBreakTime: 10
+   ironDoorBreakTime: 45
+   allowbuildterritoryinotherdim: false
    

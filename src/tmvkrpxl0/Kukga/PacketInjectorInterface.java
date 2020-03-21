@@ -3,6 +3,6 @@ package tmvkrpxl0.Kukga;
 import org.bukkit.entity.Player;
 
 public interface PacketInjectorInterface {
-	public void addPlayer(Player p);
-	public void removePlayer(Player p);
+	void addPlayer(Player p);
+	void removePlayer(Player p);
 }

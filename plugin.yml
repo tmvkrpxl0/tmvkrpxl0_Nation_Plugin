@@ -1,6 +1,6 @@
 name: Kukga
-version: 0.1
-author: tmvkrpxl0
+version: 0.2.1
+author: com.tmvkrpxl0
 description: 국가전쟁에 필요한 플러그인입니다.
 main: tmvkrpxl0.Kukga.KukgaMain
 commands:

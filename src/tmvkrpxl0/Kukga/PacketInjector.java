@@ -1,5 +1,6 @@
 package tmvkrpxl0.Kukga;
 import java.lang.reflect.Field;
+import java.util.Objects;
 
 import org.bukkit.entity.Player;
 
@@ -10,23 +11,21 @@ import net.minecraft.util.io.netty.channel.Channel;
 public class PacketInjector implements PacketInjectorInterface{
 
 	private Field EntityPlayer_playerConnection;
-	private Class<?> PlayerConnection;
 	private Field PlayerConnection_networkManager;
 
-	private Class<?> NetworkManager;
 	private Field k;
 	private Field m;
 
 	public PacketInjector() {
 		try {
-			EntityPlayer_playerConnection = KukgaReflection.getField(KukgaReflection.getClass("{nms}.EntityPlayer"), "playerConnection");
+			EntityPlayer_playerConnection = Reflection.getField(Objects.requireNonNull(Reflection.getClass("{nms}.EntityPlayer")), "playerConnection");
 
-			PlayerConnection = KukgaReflection.getClass("{nms}.PlayerConnection");
-			PlayerConnection_networkManager = KukgaReflection.getField(PlayerConnection, "networkManager");
+			Class<?> playerConnection = Objects.requireNonNull(Reflection.getClass("{nms}.PlayerConnection"));
+			PlayerConnection_networkManager = Reflection.getField(playerConnection, "networkManager");
 
-			NetworkManager = KukgaReflection.getClass("{nms}.NetworkManager");
-			k = KukgaReflection.getField(NetworkManager, "k");
-			m = KukgaReflection.getField(NetworkManager, "m");
+			Class<?> networkManager = Objects.requireNonNull(Reflection.getClass("{nms}.NetworkManager"));
+			k = Reflection.getField(networkManager, "k");
+			m = Reflection.getField(networkManager, "m");
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}
@@ -35,7 +34,7 @@ public class PacketInjector implements PacketInjectorInterface{
 	@Override
 	public void addPlayer(Player p) {
 		try {
-			Channel ch = getChannel(getNetworkManager(KukgaReflection.getNmsPlayer(p)));
+			Channel ch = getChannel(getNetworkManager(Reflection.getNmsPlayer(p)));
 			if(ch.pipeline().get("PacketInjector") == null) {
 				PacketHandler h = new PacketHandler(p);
 				ch.pipeline().addBefore("packet_handler", "PacketInjector", h);
@@ -48,7 +47,7 @@ public class PacketInjector implements PacketInjectorInterface{
 	@Override
 	public void removePlayer(Player p) {
 		try {
-			Channel ch = getChannel(getNetworkManager(KukgaReflection.getNmsPlayer(p)));
+			Channel ch = getChannel(getNetworkManager(Reflection.getNmsPlayer(p)));
 			if(ch.pipeline().get("PacketInjector") != null) {
 				ch.pipeline().remove("PacketInjector");
 			}
@@ -58,16 +57,16 @@ public class PacketInjector implements PacketInjectorInterface{
 	}
 
 	private Object getNetworkManager(Object ep) {
-		Object obj = KukgaReflection.getFieldValue(EntityPlayer_playerConnection, ep);
-		return KukgaReflection.getFieldValue(PlayerConnection_networkManager, obj);
+		Object obj = Reflection.getFieldValue(EntityPlayer_playerConnection, ep);
+		return Reflection.getFieldValue(PlayerConnection_networkManager, obj);
 	}
 
 	private Channel getChannel(Object networkManager) {
-		Channel ch = null;
+		Channel ch;
 		try {
-			ch = KukgaReflection.getFieldValue(k, networkManager);
+			ch = Reflection.getFieldValue(k, networkManager);
 		} catch (Exception e) {
-			ch = KukgaReflection.getFieldValue(m, networkManager);
+			ch = Reflection.getFieldValue(m, networkManager);
 		}
 		return ch;
 	}
