@@ -39,8 +39,7 @@ public class PacketInjector implements PacketInjectorInterface{
 				PacketHandler h = new PacketHandler(p);
 				ch.pipeline().addBefore("packet_handler", "PacketInjector", h);
 			}
-		} catch (Throwable t) {
-			t.printStackTrace();
+		} catch (Throwable ignored) {
 		}
 	}
 	
