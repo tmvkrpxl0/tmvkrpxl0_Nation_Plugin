@@ -57,18 +57,6 @@ public class PermissionManager {
 		permissions.put(uuid, l);
 	}
 
-
-	protected  static void enablePermission(@Nonnull OfflinePlayer player,@Nonnull String perm){
-		enablePermission(player.getUniqueId(), perm);
-	}
-
-	protected static boolean getPermission(@Nonnull  OfflinePlayer player,@Nonnull String perm){
-		return getPermission(player.getUniqueId(), perm);
-	}
-
-	protected static boolean getPermission(@Nonnull Player player, @Nonnull String perm){
-		return getPermission((OfflinePlayer) player, perm);
-	}
 	protected static boolean getPermission(@Nonnull UUID uuid,@Nonnull String perm) {
 		boolean[] l = permissions.get(uuid);
 		if(l==null)return false;
@@ -77,11 +65,6 @@ public class PermissionManager {
 			else if(secondary.equals(perm))return l[1];
 		}
 		return false;
-	}
-	
-	protected static boolean getPermission(CommandSender sender, String perm) {
-		if(sender instanceof Player)return getPermission((OfflinePlayer) sender, perm);
-		else return false;
 	}
 
 	protected static void disablePermission(UUID uuid, String perm){
@@ -92,9 +75,5 @@ public class PermissionManager {
 			else if(secondary.equals(perm))l[1] = false;
 		}
 		permissions.put(uuid, l);
-	}
-
-	protected static void disablePermission(OfflinePlayer player, String perm){
-		disablePermission(player.getUniqueId(), perm);
 	}
 }

@@ -22,19 +22,6 @@ public class TabComplete implements TabCompleter{
 				 r.remove("저장");
 				 r.remove("설정");
 			 }
-			 if(!PermissionManager.getPermission(sender, PermissionManager.create)) {
-				 r.remove("생성");
-				 r.remove("삭제");
-			 }else {
-				 r.remove("초대수락");
-				 r.remove("초대거절");
-			 }
-			 if(!PermissionManager.getPermission(sender, PermissionManager.secondary)){
-				 r.remove("초대");
-				 r.remove("추방");
-				 r.remove("전쟁선포");
-				 r.remove("전쟁방어");
-			 }else r.remove("탈퇴");
 			 if(!(sender instanceof Player)) {
 				 r.remove("초대");
 				 r.remove("찾기");
@@ -46,19 +33,34 @@ public class TabComplete implements TabCompleter{
 				 r.remove("탈퇴");
 				 r.remove("생성");
 				 r.remove("삭제");
-			 }else if(TeamManager.getNation((Player)sender)==null){
-			 	r.remove("탈퇴");
-			 	r.remove("삭제");
-			 	r.remove("찾기");
-			 	r.remove("초대");
-			 	r.remove("추방");
-			 	r.remove("전쟁선포");
-			 	r.remove("전쟁방어");
-			 }
-			 else {
-				 r.remove("생성");
-				 r.remove("초대수락");
-				 r.remove("초대거절");
+			 }else {
+				 if(!PermissionManager.getPermission(((Player)sender).getUniqueId(), PermissionManager.secondary)){
+					 r.remove("초대");
+					 r.remove("추방");
+					 r.remove("전쟁선포");
+					 r.remove("전쟁방어");
+				 }else r.remove("탈퇴");
+				 if(!PermissionManager.getPermission(((Player)sender).getUniqueId(), PermissionManager.create)) {
+					 r.remove("생성");
+					 r.remove("삭제");
+				 }else {
+					 r.remove("초대수락");
+					 r.remove("초대거절");
+				 }
+			 	if(TeamManager.getNation((Player)sender)==null){
+					 r.remove("탈퇴");
+					 r.remove("삭제");
+					 r.remove("찾기");
+					 r.remove("초대");
+					 r.remove("추방");
+					 r.remove("전쟁선포");
+					 r.remove("전쟁방어");
+				 }
+				 else {
+					 r.remove("생성");
+					 r.remove("초대수락");
+					 r.remove("초대거절");
+				 }
 			 }
 			 Collections.sort(r); 
 			 return r;
@@ -66,7 +68,7 @@ public class TabComplete implements TabCompleter{
 			switch(args[0]) {
 			case "초대":
 				if(TeamManager.getNation((Player)sender)!=null) {
-					if(PermissionManager.getPermission(sender, PermissionManager.secondary)){
+					if(PermissionManager.getPermission(((Player)sender).getUniqueId(), PermissionManager.secondary)){
 						LinkedList<String> players = new LinkedList<>();
 						for(Player p : KukgaMain.getOnlinePlayers()) {
 							players.add(p.getName());
@@ -86,7 +88,7 @@ public class TabComplete implements TabCompleter{
 				break;
 			case "추방":
 				if(TeamManager.getNation((Player)sender)!=null) {
-					if(PermissionManager.getPermission(sender, PermissionManager.secondary)){
+					if(PermissionManager.getPermission(((Player)sender).getUniqueId(), PermissionManager.secondary)){
 						r = TeamManager.getTeam(TeamManager.getNation((Player)sender));
 						r.remove(sender.getName());
 						Collections.sort(r);
@@ -97,7 +99,7 @@ public class TabComplete implements TabCompleter{
 			case "승급":
 			case "강등":
 				if(TeamManager.getNation((Player)sender)!=null) {
-					if(PermissionManager.getPermission(sender, PermissionManager.secondary)){
+					if(PermissionManager.getPermission(((Player)sender).getUniqueId(), PermissionManager.secondary)){
 						StringUtil.copyPartialMatches(args[1], TeamManager.getTeam(TeamManager.getNation((Player)sender)), r);
 						r.remove(sender.getName());
 						Collections.sort(r);
@@ -107,7 +109,7 @@ public class TabComplete implements TabCompleter{
 				break;
 			case "전쟁선포":
 				if(TeamManager.getNation((Player)sender)!=null) {
-					if(PermissionManager.getPermission(sender, PermissionManager.secondary)){
+					if(PermissionManager.getPermission(((Player)sender).getUniqueId(), PermissionManager.secondary)){
 						StringUtil.copyPartialMatches(args[1], TeamManager.getTeamList(), r);
 						r.remove(TeamManager.getNation((Player)sender));
 						Collections.sort(r);

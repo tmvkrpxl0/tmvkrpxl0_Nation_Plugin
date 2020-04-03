@@ -1,5 +1,5 @@
 name: Kukga
-version: 0.2.1
+version: 0.2.2
 author: com.tmvkrpxl0
 description: 국가전쟁에 필요한 플러그인입니다.
 main: tmvkrpxl0.Kukga.KukgaMain
@@ -8,5 +8,4 @@ commands:
       description: /국가 를 쳐서 사용가능한 명령어들을 보세요.
       usage: /국가 <명령>
       aliases: [Kukga, kukga]
-depend: [LuckPerms]
 softdepend: [HolographicDisplays]

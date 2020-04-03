@@ -1,21 +1,26 @@
 package tmvkrpxl0.Kukga;
 
-import java.io.File;
-
-import org.bukkit.OfflinePlayer;
-import org.bukkit.craftbukkit.libs.jline.internal.Nullable;
-import tmvkrpxl0.Config.BattleInfo;
-
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+import tmvkrpxl0.Config.BattleInfo;
 import tmvkrpxl0.Config.TerritoryInfo;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.UUID;
 
 public class Command implements CommandExecutor{
 	protected static final String[] available = {
@@ -61,7 +66,6 @@ public class Command implements CommandExecutor{
 	@Override
 	@SuppressWarnings("ConstantConditions")
 	public boolean onCommand(final CommandSender sender, org.bukkit.command.Command cmd, String label, final String[] args) {
-		@Nullable
 		Player p = null;
 		if(!(sender instanceof Player) && (args.length == 0 || !(args[0].equals("설정") || args[0].equals("저장")))) {
 			sender.sendMessage(KukgaMain.prefix + "오직 플레이어만 사용할 수 있습니다!");
@@ -88,12 +92,12 @@ public class Command implements CommandExecutor{
 					}
 					break;
 				case "생성":
-					if(PermissionManager.getPermission(p, PermissionManager.create)) {
+					if(PermissionManager.getPermission(p.getUniqueId(), PermissionManager.create)) {
 						if(TeamManager.getNation(p)==null) {
 							if(args.length >= 2) {
 								if(!TeamManager.getTeamList().contains(args[1])) {
 									TeamManager.createTeam(args[1], p);
-									PermissionManager.enablePermission(p, PermissionManager.secondary);
+									PermissionManager.enablePermission(p.getUniqueId(), PermissionManager.secondary);
 									KukgaMain.broadcast(sender.getName() + "님께서" + args[1] + "국가를 만드셨습니다");
 								}else sender.sendMessage("이미 같은 이름의 국가가 존재합니다!");
 							}else sender.sendMessage("사용법: /국가 생성 <국가 이름>");
@@ -101,7 +105,7 @@ public class Command implements CommandExecutor{
 					}else sender.sendMessage("오직 개척자만이 사용 가능합니다!");
 					break;
 				case "삭제":
-					if(PermissionManager.getPermission(p, PermissionManager.create)) {
+					if(PermissionManager.getPermission(p.getUniqueId(), PermissionManager.create)) {
 						String from = TeamManager.getNation(p);
 						if(from!=null) {
 							if(BattleManager.warWithWho(from)==null) {
@@ -122,13 +126,13 @@ public class Command implements CommandExecutor{
 					}else sender.sendMessage("국가에 소속되어 있어야 합니다!");
 					break;
 				case "초대":
-					if(PermissionManager.getPermission(p, PermissionManager.secondary)) {
+					if(PermissionManager.getPermission(p.getUniqueId(), PermissionManager.secondary)) {
 						if(TeamManager.getNation(p)!=null) {
 							if(args.length>1) {
 								if(Bukkit.getPlayerExact(args[1])!=null) {
 									if(!args[1].equals(sender.getName())) {
 										if(TeamManager.getNation(Bukkit.getPlayerExact(args[1]))==null) {
-											if(!PermissionManager.getPermission(Bukkit.getPlayer(args[1]), PermissionManager.create)) {
+											if(!PermissionManager.getPermission(Bukkit.getPlayerExact(args[1]).getUniqueId(), PermissionManager.create)) {
 												if(TeamManager.invite(Bukkit.getPlayerExact(args[1]), TeamManager.getNation(p))) {
 													sender.sendMessage(KukgaMain.prefix + args[1] + "님에게 성공적으로 초대를 보냈습니다!");
 												}else sender.sendMessage(args[1] + "님은 이미 초대를 받았습니다! 나중에 다시 시도하세요");
@@ -142,7 +146,7 @@ public class Command implements CommandExecutor{
 					break;
 				case "초대수락":
 					if(TeamManager.getNation(p)==null) {
-						if(!PermissionManager.getPermission(p, PermissionManager.create)) {
+						if(!PermissionManager.getPermission(p.getUniqueId(), PermissionManager.create)) {
 							if(TeamManager.invites.get(p.getUniqueId())!=null) {
 								TeamManager.joinTeam(p, TeamManager.invites.get(p.getUniqueId()));
 								sender.sendMessage(TeamManager.invites.get(p.getUniqueId()) + "국가에 참여하셨습니다!");
@@ -161,11 +165,11 @@ public class Command implements CommandExecutor{
 					break;
 				case "추방":
 					if(TeamManager.getNation(p)!=null) {
-						if(PermissionManager.getPermission(p, PermissionManager.secondary)) {
+						if(PermissionManager.getPermission(p.getUniqueId(), PermissionManager.secondary)) {
 							if(args.length > 1) {
 								if(TeamManager.getNation(p).equals(TeamManager.getNation(Bukkit.getPlayerExact(args[1])))) {
 									if(!args[1].equals(sender.getName())) {
-										if(!PermissionManager.getPermission(Bukkit.getPlayerExact(args[1]), PermissionManager.secondary)) {
+										if(!PermissionManager.getPermission(Bukkit.getPlayerExact(args[1]).getUniqueId(), PermissionManager.secondary)) {
 											Bukkit.getPlayerExact(args[1]).sendMessage(ChatColor.RED + "당신은 " + p + "국가에서 추방당하셨습니다!");
 											TeamManager.leaveTeam(Bukkit.getPlayerExact(args[1]), TeamManager.getNation(p));
 										}else sender.sendMessage("왕은 추방될 수 없습니다!");
@@ -180,7 +184,7 @@ public class Command implements CommandExecutor{
 					break;
 				case "탈퇴":
 					if(TeamManager.getNation(p)!=null) {
-						if(!PermissionManager.getPermission(p, PermissionManager.secondary)) {
+						if(!PermissionManager.getPermission(p.getUniqueId(), PermissionManager.secondary)) {
 							sender.sendMessage(KukgaMain.prefix + ChatColor.RED + "당신은 국가에서 탈퇴하셨습니다!");
 							for(String s : TeamManager.getTeam(TeamManager.getNation(p))) {
 								if(s.equals(p.getName()))continue;
@@ -192,7 +196,7 @@ public class Command implements CommandExecutor{
 					break;
 				case "전쟁선포":
 					if(TeamManager.getNation(p)!=null) {
-						if(PermissionManager.getPermission(p, PermissionManager.secondary)) {
+						if(PermissionManager.getPermission(p.getUniqueId(), PermissionManager.secondary)) {
 							if(p.getInventory().containsAtLeast(KukgaMain.declarepaper, 1)) {
 								if(TerritoryManager.getRegionNumber(TeamManager.getNation(p))>0) {
 									if(args.length==1) {
@@ -225,7 +229,7 @@ public class Command implements CommandExecutor{
 					break;
 				case "전쟁방어":
 					if(TeamManager.getNation(p)!=null) {
-						if(PermissionManager.getPermission(p, PermissionManager.secondary)) {
+						if(PermissionManager.getPermission(p.getUniqueId(), PermissionManager.secondary)) {
 							if(p.getInventory().containsAtLeast(KukgaMain.defendpaper, 1)) {
 								String from = TeamManager.getNation(p);
 								BattleInfo info = BattleManager.warWithWho(from);
@@ -345,9 +349,28 @@ public class Command implements CommandExecutor{
 												sender.sendMessage("사용법:[/국가 설정 권한설정 " + args[2] + " <플레이어이름>]");
 											else sender.sendMessage("사용법:[/국가 설정 권한설정 <시민|왕|개척자>] <플레이어이름>]");
 										}else {
-											@SuppressWarnings("deprecation")
-											OfflinePlayer target = Bukkit.getOfflinePlayer(args[3]);
-											if(target!=null) {
+											UUID target = null;
+											if(Bukkit.getServer().getOnlineMode()){
+												BufferedReader is = new BufferedReader(new InputStreamReader(new URL("https://api.mojang.com/users/profiles/minecraft/" + args[3]).openStream(), StandardCharsets.UTF_8));
+												String line = is.readLine();
+												if(line==null){
+													sender.sendMessage(args[3] + "이라는 플레이어를 찾을 수 없습니다!");
+													return true;
+												}
+												try {
+													target = UUID.fromString((String)((JSONObject) new JSONParser().parse(line)).get("id"));
+												} catch(ParseException e){
+													e.printStackTrace();
+												}
+												is.close();
+											}else {
+												@SuppressWarnings("deprecation")
+												OfflinePlayer off = Bukkit.getOfflinePlayer(args[3]);
+												if(off==null){
+													sender.sendMessage(args[3] + "이라는 플레이어를 찾을 수 없습니다!");
+													return true;
+												}else target = off.getUniqueId();
+											}
 												switch(args[2]) {
 													case "시민":
 														PermissionManager.disablePermission(target, PermissionManager.secondary);
@@ -382,9 +405,6 @@ public class Command implements CommandExecutor{
 														sender.sendMessage("개척자가 나라를 만들면 자동으로 왕 권한이 생깁니다");
 														break;
 												}
-											}else {
-												sender.sendMessage(args[3] + "이라는 플레이어를 찾을 수 없습니다!");
-											}
 										}
 										break;
 									case "다른세계에영토건설허용":
@@ -454,8 +474,10 @@ public class Command implements CommandExecutor{
 										}
 										break;
 								}
-							}catch (NumberFormatException e) {
+							} catch (NumberFormatException e) {
 								sender.sendMessage("무조건 숫자여야만 합니다!");
+							} catch (Exception e){
+								e.printStackTrace();
 							}
 							return true;
 						}
@@ -481,19 +503,6 @@ public class Command implements CommandExecutor{
 			temp.put("저장", true);
 			temp.put("설정", true);
 		}
-		if(!PermissionManager.getPermission(sender, PermissionManager.create)) {
-			temp.put("생성", true);
-			temp.put("삭제", true);
-		}else {
-			temp.put("초대수락", true);
-			temp.put("초대거절", true);
-		}
-		if(!PermissionManager.getPermission(sender, PermissionManager.secondary)){
-			temp.put("초대", true);
-			temp.put("추방", true);
-			temp.put("전쟁선포", true);
-			temp.put("전쟁방어", true);
-		}else temp.put("탈퇴", true);
 		if(!(sender instanceof Player)) {
 			temp.put("초대", true);
 			temp.put("추방", true);
@@ -504,18 +513,33 @@ public class Command implements CommandExecutor{
 			temp.put("탈퇴", true);
 			temp.put("생성", true);
 			temp.put("삭제", true);
-		}else if(TeamManager.getNation((Player)sender)==null){
-			temp.put("삭제", true);
-			temp.put("초대", true);
-			temp.put("추방", true);
-			temp.put("전쟁선포", true);
-			temp.put("전쟁방어", true);
-			temp.put("탈퇴", true);
-		}
-		else {
-			temp.put("생성", true);
-			temp.put("초대수락", true);
-			temp.put("초대거절", true);
+		}else {
+			if(!PermissionManager.getPermission(((Player)sender).getUniqueId(), PermissionManager.secondary)){
+				temp.put("초대", true);
+				temp.put("추방", true);
+				temp.put("전쟁선포", true);
+				temp.put("전쟁방어", true);
+			}else temp.put("탈퇴", true);
+			if(!PermissionManager.getPermission(((Player)sender).getUniqueId(), PermissionManager.create)) {
+				temp.put("생성", true);
+				temp.put("삭제", true);
+			}else {
+				temp.put("초대수락", true);
+				temp.put("초대거절", true);
+			}
+			if(TeamManager.getNation((Player)sender)==null){
+				temp.put("삭제", true);
+				temp.put("초대", true);
+				temp.put("추방", true);
+				temp.put("전쟁선포", true);
+				temp.put("전쟁방어", true);
+				temp.put("탈퇴", true);
+			}
+			else {
+				temp.put("생성", true);
+				temp.put("초대수락", true);
+				temp.put("초대거절", true);
+			}
 		}
 		int idx = 0;
 		for(String s : temp.keySet()) {

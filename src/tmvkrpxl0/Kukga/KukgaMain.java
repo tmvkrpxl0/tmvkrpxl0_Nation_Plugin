@@ -125,7 +125,7 @@ public class KukgaMain extends JavaPlugin {
 		}
 		KukgaListener.disable();
 		sender.sendMessage("####################################");
-		sender.sendMessage(ChatColor.DARK_PURPLE + "[com.tmvkrpxl0]국가 전쟁 플러그인을 종료합니다..");
+		sender.sendMessage(ChatColor.DARK_PURPLE + "[tmvkrpxl0]국가 전쟁 플러그인을 종료합니다..");
 		sender.sendMessage("[" + pdFile.getFullName() + ": " + pdFile.getDescription() + "]");
 		sender.sendMessage("####################################");
 	}
